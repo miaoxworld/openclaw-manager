@@ -5,11 +5,22 @@ use crate::utils::platform;
 use crate::utils::file;
 use log::{info, debug, warn};
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
+/// Windows CREATE_NO_WINDOW 标志，用于隐藏控制台窗口
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 /// 执行 Shell 命令
 pub fn run_command(cmd: &str, args: &[&str]) -> io::Result<Output> {
-    Command::new(cmd)
-        .args(args)
-        .output()
+    let mut command = Command::new(cmd);
+    command.args(args);
+    
+    #[cfg(windows)]
+    command.creation_flags(CREATE_NO_WINDOW);
+    
+    command.output()
 }
 
 /// 执行 Shell 命令并获取输出字符串
@@ -28,10 +39,13 @@ pub fn run_command_output(cmd: &str, args: &[&str]) -> Result<String, String> {
 
 /// 执行 Bash 命令
 pub fn run_bash(script: &str) -> io::Result<Output> {
-    Command::new("bash")
-        .arg("-c")
-        .arg(script)
-        .output()
+    let mut command = Command::new("bash");
+    command.arg("-c").arg(script);
+    
+    #[cfg(windows)]
+    command.creation_flags(CREATE_NO_WINDOW);
+    
+    command.output()
 }
 
 /// 执行 Bash 命令并获取输出
