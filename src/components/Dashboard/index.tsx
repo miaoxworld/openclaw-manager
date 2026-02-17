@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { invoke } from '@tauri-apps/api/core';
+import { useTranslation } from 'react-i18next';
 import { StatusCard } from './StatusCard';
 import { QuickActions } from './QuickActions';
 import { SystemInfo } from './SystemInfo';
@@ -16,6 +17,7 @@ interface DashboardProps {
 }
 
 export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<ServiceStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -53,17 +55,16 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
     fetchStatus();
     fetchLogs();
     if (!isTauri()) return;
-    
+
     const statusInterval = setInterval(fetchStatus, 3000);
     const logsInterval = autoRefreshLogs ? setInterval(fetchLogs, 2000) : null;
-    
+
     return () => {
       clearInterval(statusInterval);
       if (logsInterval) clearInterval(logsInterval);
     };
   }, [autoRefreshLogs]);
 
-  // 自动滚动到日志底部
   useEffect(() => {
     if (logsExpanded && logsEndRef.current) {
       logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -140,7 +141,6 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
     show: { opacity: 1, y: 0 },
   };
 
-  // 检查环境是否就绪
   const needsSetup = envStatus && !envStatus.ready;
 
   return (
@@ -151,19 +151,16 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
         animate="show"
         className="space-y-6"
       >
-        {/* 环境安装向导（仅在需要时显示） */}
         {needsSetup && (
           <motion.div variants={itemVariants}>
             <Setup onComplete={onSetupComplete} embedded />
           </motion.div>
         )}
 
-        {/* 服务状态卡片 */}
         <motion.div variants={itemVariants}>
           <StatusCard status={status} loading={loading} />
         </motion.div>
 
-        {/* 快捷操作 */}
         <motion.div variants={itemVariants}>
           <QuickActions
             status={status}
@@ -174,25 +171,23 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
           />
         </motion.div>
 
-        {/* 实时日志 */}
         <motion.div variants={itemVariants}>
           <div className="bg-dark-700 rounded-2xl border border-dark-500 overflow-hidden">
-            {/* 日志标题栏 */}
-            <div 
+            <div
               className="flex items-center justify-between px-4 py-3 bg-dark-600/50 cursor-pointer"
               onClick={() => setLogsExpanded(!logsExpanded)}
             >
               <div className="flex items-center gap-2">
                 <Terminal size={16} className="text-gray-500" />
-                <span className="text-sm font-medium text-white">实时日志</span>
+                <span className="text-sm font-medium text-white">{t('dashboard.liveLogs')}</span>
                 <span className="text-xs text-gray-500">
-                  ({logs.length} 行)
+                  ({t('dashboard.lines', { count: logs.length })})
                 </span>
               </div>
               <div className="flex items-center gap-3">
                 {logsExpanded && (
                   <>
-                    <label 
+                    <label
                       className="flex items-center gap-2 text-xs text-gray-400"
                       onClick={e => e.stopPropagation()}
                     >
@@ -202,7 +197,7 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
                         onChange={(e) => setAutoRefreshLogs(e.target.checked)}
                         className="w-3 h-3 rounded border-dark-500 bg-dark-600 text-claw-500"
                       />
-                      自动刷新
+                      {t('dashboard.autoRefresh')}
                     </label>
                     <button
                       onClick={(e) => {
@@ -210,7 +205,7 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
                         fetchLogs();
                       }}
                       className="text-gray-500 hover:text-white"
-                      title="刷新日志"
+                      title={t('dashboard.refreshLogs')}
                     >
                       <RefreshCw size={14} />
                     </button>
@@ -224,12 +219,11 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
               </div>
             </div>
 
-            {/* 日志内容 */}
             {logsExpanded && (
               <div className="h-64 overflow-y-auto p-4 font-mono text-xs leading-relaxed bg-dark-800">
                 {logs.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-gray-500">
-                    <p>暂无日志，请先启动服务</p>
+                    <p>{t('dashboard.noLogs')}</p>
                   </div>
                 ) : (
                   <>
@@ -249,7 +243,6 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
           </div>
         </motion.div>
 
-        {/* 系统信息 */}
         <motion.div variants={itemVariants}>
           <SystemInfo />
         </motion.div>

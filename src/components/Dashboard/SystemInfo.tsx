@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Monitor, Package, Folder, CheckCircle, XCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { api, SystemInfo as SystemInfoType, isTauri } from '../../lib/tauri';
 
 export function SystemInfo() {
+  const { t } = useTranslation();
   const [info, setInfo] = useState<SystemInfoType | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -40,7 +42,7 @@ export function SystemInfo() {
   if (loading) {
     return (
       <div className="bg-dark-700 rounded-2xl p-6 border border-dark-500">
-        <h3 className="text-lg font-semibold text-white mb-4">系统信息</h3>
+        <h3 className="text-lg font-semibold text-white mb-4">{t('systemInfo.title')}</h3>
         <div className="animate-pulse space-y-3">
           <div className="h-4 bg-dark-500 rounded w-1/2"></div>
           <div className="h-4 bg-dark-500 rounded w-2/3"></div>
@@ -52,16 +54,15 @@ export function SystemInfo() {
 
   return (
     <div className="bg-dark-700 rounded-2xl p-6 border border-dark-500">
-      <h3 className="text-lg font-semibold text-white mb-4">系统信息</h3>
+      <h3 className="text-lg font-semibold text-white mb-4">{t('systemInfo.title')}</h3>
 
       <div className="space-y-4">
-        {/* 操作系统 */}
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-dark-500 flex items-center justify-center">
             <Monitor size={16} className="text-gray-400" />
           </div>
           <div className="flex-1">
-            <p className="text-xs text-gray-500">操作系统</p>
+            <p className="text-xs text-gray-500">{t('systemInfo.os')}</p>
             <p className="text-sm text-white">
               {info ? `${getOSLabel(info.os)} ${info.os_version}` : '--'}{' '}
               <span className="text-gray-500">({info?.arch})</span>
@@ -69,7 +70,6 @@ export function SystemInfo() {
           </div>
         </div>
 
-        {/* OpenClaw */}
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-dark-500 flex items-center justify-center">
             {info?.openclaw_installed ? (
@@ -82,13 +82,12 @@ export function SystemInfo() {
             <p className="text-xs text-gray-500">OpenClaw</p>
             <p className="text-sm text-white">
               {info?.openclaw_installed
-                ? info.openclaw_version || '已安装'
-                : '未安装'}
+                ? info.openclaw_version || t('systemInfo.installed')
+                : t('systemInfo.notInstalled')}
             </p>
           </div>
         </div>
 
-        {/* Node.js */}
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-dark-500 flex items-center justify-center">
             <Package size={16} className="text-green-500" />
@@ -99,13 +98,12 @@ export function SystemInfo() {
           </div>
         </div>
 
-        {/* 配置目录 */}
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-dark-500 flex items-center justify-center">
             <Folder size={16} className="text-amber-400" />
           </div>
           <div className="flex-1">
-            <p className="text-xs text-gray-500">配置目录</p>
+            <p className="text-xs text-gray-500">{t('systemInfo.configDir')}</p>
             <p className="text-sm text-white font-mono text-xs truncate">
               {info?.config_dir || '--'}
             </p>

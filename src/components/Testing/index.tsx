@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { invoke } from '@tauri-apps/api/core';
 import {
@@ -19,6 +20,7 @@ interface DiagnosticResult {
 }
 
 export function Testing() {
+  const { t } = useTranslation();
   const [diagnosticResults, setDiagnosticResults] = useState<DiagnosticResult[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -36,10 +38,10 @@ export function Testing() {
     } catch (e) {
       testingLogger.error('诊断执行失败', e);
       setDiagnosticResults([{
-        name: '诊断执行',
+        name: t('testing.diagnosticExecution'),
         passed: false,
         message: String(e),
-        suggestion: '请检查 OpenClaw 是否正确安装',
+        suggestion: t('testing.checkInstallation'),
       }]);
     } finally {
       setLoading(false);
@@ -61,9 +63,9 @@ export function Testing() {
                 <Stethoscope size={20} className="text-purple-400" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-white">系统诊断</h3>
+                <h3 className="text-lg font-semibold text-white">{t('testing.title')}</h3>
                 <p className="text-xs text-gray-500">
-                  检查 OpenClaw 安装和配置状态
+                  {t('testing.subtitle')}
                 </p>
               </div>
             </div>
@@ -77,7 +79,7 @@ export function Testing() {
               ) : (
                 <Play size={16} />
               )}
-              运行诊断
+              {t('testing.runDiagnostics')}
             </button>
           </div>
 
@@ -86,12 +88,12 @@ export function Testing() {
             <div className="flex gap-4 mb-4 p-3 bg-dark-600 rounded-lg">
               <div className="flex items-center gap-2">
                 <CheckCircle size={16} className="text-green-400" />
-                <span className="text-sm text-green-400">{passedCount} 项通过</span>
+                <span className="text-sm text-green-400">{t('testing.passed', { count: passedCount })}</span>
               </div>
               {failedCount > 0 && (
                 <div className="flex items-center gap-2">
                   <XCircle size={16} className="text-red-400" />
-                  <span className="text-sm text-red-400">{failedCount} 项失败</span>
+                  <span className="text-sm text-red-400">{t('testing.failed', { count: failedCount })}</span>
                 </div>
               )}
             </div>
@@ -142,18 +144,18 @@ export function Testing() {
           {diagnosticResults.length === 0 && !loading && (
             <div className="text-center py-8 text-gray-500">
               <Stethoscope size={48} className="mx-auto mb-3 opacity-30" />
-              <p>点击"运行诊断"按钮开始检查系统状态</p>
+              <p>{t('testing.emptyState')}</p>
             </div>
           )}
         </div>
 
         {/* 说明 */}
         <div className="bg-dark-700/50 rounded-xl p-4 border border-dark-500">
-          <h4 className="text-sm font-medium text-gray-400 mb-2">诊断说明</h4>
+          <h4 className="text-sm font-medium text-gray-400 mb-2">{t('testing.notes')}</h4>
           <ul className="text-sm text-gray-500 space-y-1">
-            <li>• 系统诊断会检查 Node.js、OpenClaw 安装、配置文件等状态</li>
-            <li>• AI 连接测试请前往 <span className="text-claw-400">AI 配置</span> 页面进行</li>
-            <li>• 渠道测试请前往 <span className="text-claw-400">消息渠道</span> 页面进行</li>
+            <li>• {t('testing.note1')}</li>
+            <li>• {t('testing.note2')}</li>
+            <li>• {t('testing.note3')}</li>
           </ul>
         </div>
       </div>

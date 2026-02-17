@@ -1,4 +1,5 @@
 import { Activity, Cpu, HardDrive, Clock } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 
 interface ServiceStatus {
@@ -16,6 +17,8 @@ interface StatusCardProps {
 }
 
 export function StatusCard({ status, loading }: StatusCardProps) {
+  const { t } = useTranslation();
+
   const formatUptime = (seconds: number | null) => {
     if (!seconds) return '--';
     const hours = Math.floor(seconds / 3600);
@@ -27,7 +30,7 @@ export function StatusCard({ status, loading }: StatusCardProps) {
   return (
     <div className="bg-dark-700 rounded-2xl p-6 border border-dark-500">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-white">服务状态</h3>
+        <h3 className="text-lg font-semibold text-white">{t('statusCard.serviceStatus')}</h3>
         <div className="flex items-center gap-2">
           <div
             className={clsx(
@@ -45,7 +48,7 @@ export function StatusCard({ status, loading }: StatusCardProps) {
                 : 'text-red-400'
             )}
           >
-            {loading ? '检测中...' : status?.running ? '运行中' : '已停止'}
+            {loading ? t('statusCard.checking') : status?.running ? t('statusCard.running') : t('statusCard.stopped')}
           </span>
         </div>
       </div>
@@ -54,7 +57,7 @@ export function StatusCard({ status, loading }: StatusCardProps) {
         <div className="bg-dark-600 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Activity size={16} className="text-accent-cyan" />
-            <span className="text-xs text-gray-400">端口</span>
+            <span className="text-xs text-gray-400">{t('statusCard.port')}</span>
           </div>
           <p className="text-xl font-semibold text-white">
             {status?.port || 18789}
@@ -64,7 +67,7 @@ export function StatusCard({ status, loading }: StatusCardProps) {
         <div className="bg-dark-600 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Cpu size={16} className="text-accent-purple" />
-            <span className="text-xs text-gray-400">进程 ID</span>
+            <span className="text-xs text-gray-400">{t('statusCard.processId')}</span>
           </div>
           <p className="text-xl font-semibold text-white">
             {status?.pid || '--'}
@@ -74,7 +77,7 @@ export function StatusCard({ status, loading }: StatusCardProps) {
         <div className="bg-dark-600 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <HardDrive size={16} className="text-accent-green" />
-            <span className="text-xs text-gray-400">内存</span>
+            <span className="text-xs text-gray-400">{t('statusCard.memory')}</span>
           </div>
           <p className="text-xl font-semibold text-white">
             {status?.memory_mb ? `${status.memory_mb.toFixed(1)} MB` : '--'}
@@ -84,7 +87,7 @@ export function StatusCard({ status, loading }: StatusCardProps) {
         <div className="bg-dark-600 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Clock size={16} className="text-accent-amber" />
-            <span className="text-xs text-gray-400">运行时间</span>
+            <span className="text-xs text-gray-400">{t('statusCard.uptime')}</span>
           </div>
           <p className="text-xl font-semibold text-white">
             {formatUptime(status?.uptime_seconds || null)}

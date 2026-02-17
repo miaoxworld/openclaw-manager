@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { 
-  Trash2, 
-  RefreshCw, 
+import {
+  Trash2,
+  RefreshCw,
   Download,
   Filter,
   Terminal,
@@ -39,6 +40,7 @@ const MODULE_COLORS: Record<string, string> = {
 };
 
 export function Logs() {
+  const { t } = useTranslation();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [filter, setFilter] = useState<FilterLevel>('all');
   const [moduleFilter, setModuleFilter] = useState<string>('all');
@@ -50,7 +52,7 @@ export function Logs() {
     const updateLogs = () => {
       setLogs(logStore.getAll());
     };
-    
+
     updateLogs(); // 初始加载
     return logStore.subscribe(updateLogs);
   }, []);
@@ -120,7 +122,7 @@ export function Logs() {
         return String(arg);
       }).join(' ');
     } catch {
-      return '[无法序列化]';
+      return t('logs.cannotSerialize');
     }
   };
 
@@ -136,7 +138,7 @@ export function Logs() {
             onChange={(e) => setFilter(e.target.value as FilterLevel)}
             className="bg-dark-700 border border-dark-500 rounded-lg px-3 py-1.5 text-sm text-gray-300"
           >
-            <option value="all">所有级别</option>
+            <option value="all">{t('logs.allLevels')}</option>
             <option value="debug">Debug</option>
             <option value="info">Info</option>
             <option value="warn">Warn</option>
@@ -150,7 +152,7 @@ export function Logs() {
           onChange={(e) => setModuleFilter(e.target.value)}
           className="bg-dark-700 border border-dark-500 rounded-lg px-3 py-1.5 text-sm text-gray-300"
         >
-          <option value="all">所有模块</option>
+          <option value="all">{t('logs.allModules')}</option>
           {modules.map(module => (
             <option key={module} value={module}>{module}</option>
           ))}
@@ -160,9 +162,9 @@ export function Logs() {
 
         {/* 统计 */}
         <div className="flex items-center gap-3 text-xs text-gray-500">
-          <span>{filteredLogs.length} / {logs.length} 条</span>
-          <span className="text-red-400">{logs.filter(l => l.level === 'error').length} 错误</span>
-          <span className="text-yellow-400">{logs.filter(l => l.level === 'warn').length} 警告</span>
+          <span>{t('logs.entries', { filtered: filteredLogs.length, total: logs.length })}</span>
+          <span className="text-red-400">{t('logs.errors', { count: logs.filter(l => l.level === 'error').length })}</span>
+          <span className="text-yellow-400">{t('logs.warnings', { count: logs.filter(l => l.level === 'warn').length })}</span>
         </div>
 
         {/* 操作按钮 */}
@@ -174,26 +176,26 @@ export function Logs() {
               onChange={(e) => setAutoScroll(e.target.checked)}
               className="w-3 h-3 rounded"
             />
-            自动滚动
+            {t('logs.autoScroll')}
           </label>
           <button
             onClick={handleExport}
             className="icon-button text-gray-400 hover:text-white"
-            title="导出日志"
+            title={t('logs.exportLogs')}
           >
             <Download size={16} />
           </button>
           <button
             onClick={() => setLogs(logStore.getAll())}
             className="icon-button text-gray-400 hover:text-white"
-            title="刷新"
+            title={t('logs.refresh')}
           >
             <RefreshCw size={16} />
           </button>
           <button
             onClick={handleClear}
             className="icon-button text-gray-400 hover:text-red-400"
-            title="清除日志"
+            title={t('logs.clearLogs')}
           >
             <Trash2 size={16} />
           </button>
@@ -205,7 +207,7 @@ export function Logs() {
         {/* 标题栏 */}
         <div className="flex items-center gap-2 px-4 py-2 bg-dark-700 border-b border-dark-600">
           <Terminal size={14} className="text-gray-500" />
-          <span className="text-xs text-gray-400 font-medium">应用日志</span>
+          <span className="text-xs text-gray-400 font-medium">{t('logs.appLogs')}</span>
         </div>
 
         {/* 日志内容 */}
@@ -214,7 +216,7 @@ export function Logs() {
             <div className="h-full flex items-center justify-center text-gray-500">
               <div className="text-center">
                 <Terminal size={32} className="mx-auto mb-2 opacity-50" />
-                <p>暂无日志</p>
+                <p>{t('logs.noLogs')}</p>
               </div>
             </div>
           ) : (
