@@ -287,3 +287,295 @@ MIT License - 详见 [LICENSE](LICENSE)
 ---
 
 **Made with ❤️ by OpenClaw Team**
+
+---
+
+# 🦞 OpenClaw Manager (English)
+
+A high-performance cross-platform AI assistant management tool, built with **Tauri 2.0 + React + TypeScript + Rust**.
+
+![Platform](https://img.shields.io/badge/platform-macOS%20|%20Windows%20|%20Linux-blue)
+![Tauri](https://img.shields.io/badge/Tauri-2.0-orange)
+![React](https://img.shields.io/badge/React-18-61DAFB)
+![Rust](https://img.shields.io/badge/Rust-1.70+-red)
+
+## 📸 Screenshots
+
+### 📊 Dashboard Overview
+
+Real-time service status monitoring with one-click AI assistant service management.
+
+![Dashboard](pic/dashboard.png)
+
+- Real-time service status monitoring (port, process ID, memory, uptime)
+- Quick actions: Start / Stop / Restart / Diagnose
+- Live log viewer with auto-refresh support
+
+---
+
+### 🤖 AI Model Configuration
+
+Flexibly configure multiple AI providers with custom API endpoint support.
+
+![AI Config](pic/ai.png)
+
+- 14+ AI providers supported (Anthropic, OpenAI, DeepSeek, Moonshot, Gemini, etc.)
+- Custom API endpoints, compatible with OpenAI-format third-party services
+- One-click primary model selection with quick switching
+
+---
+
+### 📱 Message Channel Configuration
+
+Connect to multiple messaging platforms to build an omni-channel AI assistant.
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="pic/telegram.png" alt="Telegram Config">
+      <p align="center"><b>Telegram Bot</b></p>
+    </td>
+    <td width="50%">
+      <img src="pic/feishu.png" alt="Feishu Config">
+      <p align="center"><b>Feishu Bot</b></p>
+    </td>
+  </tr>
+</table>
+
+- **Telegram** - Bot Token setup, DM/group policies
+- **Feishu** - App ID/Secret, WebSocket connection, multi-region deployment
+- **More Channels** - Discord, Slack, WhatsApp, iMessage, WeChat, DingTalk
+
+---
+
+## ✨ Features
+
+| Module | Features |
+|--------|----------|
+| 📊 **Dashboard** | Real-time service status monitoring, process & memory stats, one-click start/stop/restart |
+| 🤖 **AI Config** | 14+ AI providers, custom API endpoints, quick model switching |
+| 📱 **Channels** | Telegram, Discord, Slack, Feishu, WeChat, iMessage, DingTalk |
+| ⚡ **Service Management** | Background service control, live logs, auto-start on boot |
+| 🧪 **Testing & Diagnostics** | System environment checks, AI connection tests, channel connectivity tests |
+
+## 🍎 macOS Troubleshooting
+
+### "Damaged and can't be opened" Error
+
+macOS Gatekeeper may block unsigned applications. Solutions:
+
+**Method 1: Remove quarantine attribute (Recommended)**
+
+```bash
+# For .app files
+xattr -cr /Applications/OpenClaw\ Manager.app
+
+# Or for .dmg files (before installation)
+xattr -cr ~/Downloads/OpenClaw-Manager.dmg
+```
+
+**Method 2: Allow through System Preferences**
+
+1. Open **System Preferences** > **Privacy & Security**
+2. Find the blocked app in the "Security" section
+3. Click **Open Anyway**
+
+**Method 3: Temporarily disable Gatekeeper (Not recommended)**
+
+```bash
+# Disable (requires admin password)
+sudo spctl --master-disable
+
+# Re-enable after installation
+sudo spctl --master-enable
+```
+
+### Permission Issues
+
+If the app cannot access files or perform operations:
+
+**Grant Full Disk Access**
+
+1. Open **System Preferences** > **Privacy & Security** > **Full Disk Access**
+2. Click the lock icon to unlock, then add **OpenClaw Manager**
+
+**Reset Permissions**
+
+If permissions are misconfigured, try resetting:
+
+```bash
+# Reset accessibility permissions database
+sudo tccutil reset Accessibility
+
+# Reset full disk access permissions
+sudo tccutil reset SystemPolicyAllFiles
+```
+
+## 🚀 Quick Start
+
+### Requirements
+
+- **Node.js** >= 18.0
+- **Rust** >= 1.70
+- **pnpm** (recommended) or npm
+
+### macOS Additional Dependencies
+
+```bash
+xcode-select --install
+```
+
+### Windows Additional Dependencies
+
+- [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+- [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)
+
+### Linux Additional Dependencies
+
+```bash
+# Ubuntu/Debian
+sudo apt update
+sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+# Fedora
+sudo dnf install webkit2gtk4.1-devel openssl-devel curl wget file libxdo-devel
+```
+
+### Installation & Running
+
+```bash
+# Clone the project
+git clone https://github.com/miaoxworld/openclaw-manager.git
+cd openclaw-manager
+
+# Install dependencies
+npm install
+
+# Run in development mode
+npm run tauri:dev
+
+# Build release version
+npm run tauri:build
+```
+
+## 📁 Project Structure
+
+```
+openclaw-manager/
+├── src-tauri/                 # Rust Backend
+│   ├── src/
+│   │   ├── main.rs            # Entry point
+│   │   ├── commands/          # Tauri Commands
+│   │   │   ├── service.rs     # Service management
+│   │   │   ├── config.rs      # Configuration management
+│   │   │   ├── process.rs     # Process management
+│   │   │   └── diagnostics.rs # Diagnostics
+│   │   ├── models/            # Data models
+│   │   └── utils/             # Utilities
+│   ├── Cargo.toml
+│   └── tauri.conf.json
+│
+├── src/                       # React Frontend
+│   ├── App.tsx
+│   ├── components/
+│   │   ├── Layout/            # Layout components
+│   │   ├── Dashboard/         # Dashboard
+│   │   ├── AIConfig/          # AI configuration
+│   │   ├── Channels/          # Channel configuration
+│   │   ├── Service/           # Service management
+│   │   ├── Testing/           # Testing & diagnostics
+│   │   └── Settings/          # Settings
+│   └── styles/
+│       └── globals.css
+│
+├── package.json
+├── vite.config.ts
+└── tailwind.config.js
+```
+
+## 🛠️ Tech Stack
+
+| Layer | Technology | Description |
+|-------|-----------|-------------|
+| Frontend Framework | React 18 | User interface |
+| State Management | Zustand | Lightweight state management |
+| Styling | TailwindCSS | Atomic CSS |
+| Animation | Framer Motion | Smooth animations |
+| Icons | Lucide React | Beautiful icons |
+| Backend | Rust | High-performance system calls |
+| Cross-platform | Tauri 2.0 | Native app wrapper |
+
+## 📦 Build Artifacts
+
+After running `npm run tauri:build`, artifacts are generated in `src-tauri/target/release/bundle/`:
+
+| Platform | Format |
+|----------|--------|
+| macOS | `.dmg`, `.app` |
+| Windows | `.msi`, `.exe` |
+| Linux | `.deb`, `.AppImage` |
+
+## 🎨 Design Philosophy
+
+- **Dark Theme**: Easy on the eyes, suitable for extended use
+- **Modern UI**: Frosted glass effects, smooth animations
+- **Responsive**: Adapts to different screen sizes
+- **High Performance**: Rust backend with minimal memory footprint
+
+## 🔧 Development Commands
+
+```bash
+# Development mode (hot reload)
+npm run tauri:dev
+
+# Run frontend only
+npm run dev
+
+# Build frontend
+npm run build
+
+# Build full application
+npm run tauri:build
+
+# Check Rust code
+cd src-tauri && cargo check
+
+# Run Rust tests
+cd src-tauri && cargo test
+```
+
+## 📝 Configuration Notes
+
+### Tauri Configuration (tauri.conf.json)
+
+- `app.windows` - Window configuration
+- `bundle` - Bundling configuration
+- `plugins.shell.scope` - Shell command allowlist
+- `plugins.fs.scope` - File access allowlist
+
+### Environment Variables
+
+The app reads environment variable configuration from `~/.openclaw/env`.
+
+## 🤝 Contributing
+
+1. Fork the project
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Create a Pull Request
+
+## 📄 License
+
+MIT License - See [LICENSE](LICENSE) for details
+
+## 🔗 Links
+
+- [OpenClaw Manager](https://github.com/miaoxworld/openclaw-manager) - GUI version (this project)
+- [OpenClawInstaller](https://github.com/miaoxworld/OpenClawInstaller) - CLI version
+- [Tauri Documentation](https://tauri.app/)
+- [React Documentation](https://react.dev/)
+
+---
+
+**Made with ❤️ by OpenClaw Team**

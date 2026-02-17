@@ -1,4 +1,5 @@
 import { Play, Square, RotateCcw, Stethoscope } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 
 interface ServiceStatus {
@@ -22,14 +23,14 @@ export function QuickActions({
   onStop,
   onRestart,
 }: QuickActionsProps) {
+  const { t } = useTranslation();
   const isRunning = status?.running || false;
 
   return (
     <div className="bg-dark-700 rounded-2xl p-6 border border-dark-500">
-      <h3 className="text-lg font-semibold text-white mb-4">快捷操作</h3>
+      <h3 className="text-lg font-semibold text-white mb-4">{t('quickActions.title')}</h3>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {/* 启动按钮 */}
         <button
           onClick={onStart}
           disabled={loading || isRunning}
@@ -58,11 +59,10 @@ export function QuickActions({
               isRunning ? 'text-gray-500' : 'text-gray-300'
             )}
           >
-            启动
+            {t('quickActions.start')}
           </span>
         </button>
 
-        {/* 停止按钮 */}
         <button
           onClick={onStop}
           disabled={loading || !isRunning}
@@ -91,11 +91,10 @@ export function QuickActions({
               !isRunning ? 'text-gray-500' : 'text-gray-300'
             )}
           >
-            停止
+            {t('quickActions.stop')}
           </span>
         </button>
 
-        {/* 重启按钮 */}
         <button
           onClick={onRestart}
           disabled={loading}
@@ -111,10 +110,9 @@ export function QuickActions({
               className={clsx('text-amber-400', loading && 'animate-spin')}
             />
           </div>
-          <span className="text-sm font-medium text-gray-300">重启</span>
+          <span className="text-sm font-medium text-gray-300">{t('quickActions.restart')}</span>
         </button>
 
-        {/* 诊断按钮 */}
         <button
           disabled={loading}
           className={clsx(
@@ -126,7 +124,7 @@ export function QuickActions({
           <div className="w-12 h-12 rounded-full flex items-center justify-center bg-purple-500/20">
             <Stethoscope size={20} className="text-purple-400" />
           </div>
-          <span className="text-sm font-medium text-gray-300">诊断</span>
+          <span className="text-sm font-medium text-gray-300">{t('quickActions.diagnose')}</span>
         </button>
       </div>
     </div>

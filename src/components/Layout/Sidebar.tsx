@@ -7,6 +7,7 @@ import {
   ScrollText,
   Settings,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { PageType } from '../../App';
 import clsx from 'clsx';
 
@@ -22,20 +23,23 @@ interface SidebarProps {
   serviceStatus: ServiceStatus | null;
 }
 
-const menuItems: { id: PageType; label: string; icon: React.ElementType }[] = [
-  { id: 'dashboard', label: '概览', icon: LayoutDashboard },
-  { id: 'ai', label: 'AI 配置', icon: Bot },
-  { id: 'channels', label: '消息渠道', icon: MessageSquare },
-  { id: 'testing', label: '测试诊断', icon: FlaskConical },
-  { id: 'logs', label: '应用日志', icon: ScrollText },
-  { id: 'settings', label: '设置', icon: Settings },
-];
+const menuIcons: Record<PageType, React.ElementType> = {
+  dashboard: LayoutDashboard,
+  ai: Bot,
+  channels: MessageSquare,
+  testing: FlaskConical,
+  logs: ScrollText,
+  settings: Settings,
+};
+
+const menuKeys: PageType[] = ['dashboard', 'ai', 'channels', 'testing', 'logs', 'settings'];
 
 export function Sidebar({ currentPage, onNavigate, serviceStatus }: SidebarProps) {
+  const { t } = useTranslation();
   const isRunning = serviceStatus?.running ?? false;
+
   return (
     <aside className="w-64 bg-dark-800 border-r border-dark-600 flex flex-col">
-      {/* Logo 区域（macOS 标题栏拖拽） */}
       <div className="h-14 flex items-center px-6 titlebar-drag border-b border-dark-600">
         <div className="flex items-center gap-3 titlebar-no-drag">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-claw-400 to-claw-600 flex items-center justify-center">
@@ -48,17 +52,17 @@ export function Sidebar({ currentPage, onNavigate, serviceStatus }: SidebarProps
         </div>
       </div>
 
-      {/* 导航菜单 */}
       <nav className="flex-1 py-4 px-3">
         <ul className="space-y-1">
-          {menuItems.map((item) => {
-            const isActive = currentPage === item.id;
-            const Icon = item.icon;
-            
+          {menuKeys.map((id) => {
+            const isActive = currentPage === id;
+            const Icon = menuIcons[id];
+            const label = t(`sidebar.${id}`);
+
             return (
-              <li key={item.id}>
+              <li key={id}>
                 <button
-                  onClick={() => onNavigate(item.id)}
+                  onClick={() => onNavigate(id)}
                   className={clsx(
                     'w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all relative',
                     isActive
@@ -74,7 +78,7 @@ export function Sidebar({ currentPage, onNavigate, serviceStatus }: SidebarProps
                     />
                   )}
                   <Icon size={18} className={isActive ? 'text-claw-400' : ''} />
-                  <span>{item.label}</span>
+                  <span>{label}</span>
                 </button>
               </li>
             );
@@ -82,16 +86,15 @@ export function Sidebar({ currentPage, onNavigate, serviceStatus }: SidebarProps
         </ul>
       </nav>
 
-      {/* 底部信息 */}
       <div className="p-4 border-t border-dark-600">
         <div className="px-4 py-3 bg-dark-700 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
             <div className={clsx('status-dot', isRunning ? 'running' : 'stopped')} />
             <span className="text-xs text-gray-400">
-              {isRunning ? '服务运行中' : '服务未启动'}
+              {isRunning ? t('sidebar.serviceRunning') : t('sidebar.serviceStopped')}
             </span>
           </div>
-          <p className="text-xs text-gray-500">端口: {serviceStatus?.port ?? 18789}</p>
+          <p className="text-xs text-gray-500">{t('sidebar.port', { port: serviceStatus?.port ?? 18789 })}</p>
         </div>
       </div>
     </aside>
