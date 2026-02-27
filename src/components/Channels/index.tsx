@@ -84,7 +84,7 @@ const channelInfo: Record<
     icon: <Hash size={20} />,
     color: 'text-indigo-400',
     fields: [
-      { key: 'botToken', label: 'Bot Token', type: 'password', placeholder: 'Discord Bot Token', required: true },
+      { key: 'token', label: 'Bot Token', type: 'password', placeholder: 'Discord Bot Token', required: true },
       { key: 'testChannelId', label: '测试 Channel ID', type: 'text', placeholder: '用于发送测试消息的频道 ID (可选)' },
       { key: 'dmPolicy', label: '私聊策略', type: 'select', options: [
         { value: 'pairing', label: '配对模式' },
