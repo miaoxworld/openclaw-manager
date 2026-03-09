@@ -2,7 +2,9 @@ import { motion } from 'framer-motion';
 import {
   LayoutDashboard,
   Bot,
+  Users,
   MessageSquare,
+  Puzzle,
   FlaskConical,
   ScrollText,
   Settings,
@@ -25,7 +27,9 @@ interface SidebarProps {
 const menuItems: { id: PageType; label: string; icon: React.ElementType }[] = [
   { id: 'dashboard', label: '概览', icon: LayoutDashboard },
   { id: 'ai', label: 'AI 配置', icon: Bot },
+  { id: 'agents', label: 'Agent 管理', icon: Users },
   { id: 'channels', label: '消息渠道', icon: MessageSquare },
+  { id: 'skills', label: '技能库', icon: Puzzle },
   { id: 'testing', label: '测试诊断', icon: FlaskConical },
   { id: 'logs', label: '应用日志', icon: ScrollText },
   { id: 'settings', label: '设置', icon: Settings },
@@ -54,7 +58,7 @@ export function Sidebar({ currentPage, onNavigate, serviceStatus }: SidebarProps
           {menuItems.map((item) => {
             const isActive = currentPage === item.id;
             const Icon = item.icon;
-            
+
             return (
               <li key={item.id}>
                 <button

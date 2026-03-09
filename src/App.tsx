@@ -6,6 +6,8 @@ import { Header } from './components/Layout/Header';
 import { Dashboard } from './components/Dashboard';
 import { AIConfig } from './components/AIConfig';
 import { Channels } from './components/Channels';
+import { Skills } from './components/Skills';
+import { Agents } from './components/Agents';
 import { Settings } from './components/Settings';
 import { Testing } from './components/Testing';
 import { Logs } from './components/Logs';
@@ -13,7 +15,7 @@ import { appLogger } from './lib/logger';
 import { isTauri } from './lib/tauri';
 import { Download, X, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
-export type PageType = 'dashboard' | 'ai' | 'channels' | 'testing' | 'logs' | 'settings';
+export type PageType = 'dashboard' | 'ai' | 'agents' | 'channels' | 'skills' | 'testing' | 'logs' | 'settings';
 
 export interface EnvironmentStatus {
   node_installed: boolean;
@@ -50,7 +52,7 @@ function App() {
   const [isReady, setIsReady] = useState<boolean | null>(null);
   const [envStatus, setEnvStatus] = useState<EnvironmentStatus | null>(null);
   const [serviceStatus, setServiceStatus] = useState<ServiceStatus | null>(null);
-  
+
   // 更新相关状态
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
@@ -64,7 +66,7 @@ function App() {
       setIsReady(true);
       return;
     }
-    
+
     appLogger.info('开始检查系统环境...');
     try {
       const status = await invoke<EnvironmentStatus>('check_environment');
@@ -80,7 +82,7 @@ function App() {
   // 检查更新
   const checkUpdate = useCallback(async () => {
     if (!isTauri()) return;
-    
+
     appLogger.info('检查 OpenClaw 更新...');
     try {
       const info = await invoke<UpdateInfo>('check_openclaw_update');
@@ -139,7 +141,7 @@ function App() {
   useEffect(() => {
     // 不在 Tauri 环境中则不轮询
     if (!isTauri()) return;
-    
+
     const fetchServiceStatus = async () => {
       try {
         const status = await invoke<ServiceStatus>('get_service_status');
@@ -174,7 +176,9 @@ function App() {
     const pages: Record<PageType, JSX.Element> = {
       dashboard: <Dashboard envStatus={envStatus} onSetupComplete={handleSetupComplete} />,
       ai: <AIConfig />,
+      agents: <Agents />,
       channels: <Channels />,
+      skills: <Skills />,
       testing: <Testing />,
       logs: <Logs />,
       settings: <Settings onEnvironmentChange={checkEnvironment} />,
@@ -217,7 +221,7 @@ function App() {
     <div className="flex h-screen bg-dark-900 overflow-hidden">
       {/* 背景装饰 */}
       <div className="fixed inset-0 bg-gradient-radial pointer-events-none" />
-      
+
       {/* 更新提示横幅 */}
       <AnimatePresence>
         {showUpdateBanner && updateInfo?.update_available && (
@@ -253,7 +257,7 @@ function App() {
                   )}
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 {!updateResult && (
                   <button
@@ -288,15 +292,15 @@ function App() {
           </motion.div>
         )}
       </AnimatePresence>
-      
+
       {/* 侧边栏 */}
       <Sidebar currentPage={currentPage} onNavigate={handleNavigate} serviceStatus={serviceStatus} />
-      
+
       {/* 主内容区 */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* 标题栏（macOS 拖拽区域） */}
         <Header currentPage={currentPage} />
-        
+
         {/* 页面内容 */}
         <main className="flex-1 overflow-hidden p-6">
           {renderPage()}
