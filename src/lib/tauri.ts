@@ -123,11 +123,16 @@ export interface TuziGroupConfig {
 
 export interface TuziConfigOverview {
   configured: boolean;
-  active_group: TuziGroup | null;
-  active_provider_id: string | null;
-  active_model: string | null;
-  active_models: string[];
   groups: TuziGroupConfig[];
+}
+
+export type TuziModelsSource = 'api' | 'cache';
+
+export interface TuziModelsResponse {
+  models: string[];
+  source: TuziModelsSource;
+  cache_timestamp: string | null;
+  warning: string | null;
 }
 
 export interface TuziModelTemplate {
@@ -186,7 +191,6 @@ export interface EnvironmentStatus {
   config_dir_exists: boolean;
   ai_configured: boolean;
   tuzi_configured: boolean;
-  tuzi_active_group: TuziGroup | null;
   ready: boolean;
   os: string;
 }
@@ -217,13 +221,13 @@ export const api = {
 
   // AI 配置（新版）
   getOfficialProviders: () => invokeWithLog<OfficialProvider[]>('get_official_providers'),
+  fetchTuziModels: (group: TuziGroup, apiKey: string) =>
+    invokeWithLog<TuziModelsResponse>('fetch_tuzi_models', { group, apiKey }),
   getTuziTemplates: () => invokeWithLog<TuziModelTemplate[]>('get_tuzi_templates'),
   getTuziConfig: () => invokeWithLog<TuziConfigOverview>('get_tuzi_config'),
   getAIConfig: () => invokeWithLog<AIConfigOverview>('get_ai_config'),
   saveTuziConfig: (group: TuziGroup, apiKey: string, models: string[]) =>
     invokeWithLog<string>('save_tuzi_config', { group, apiKey, models }),
-  activateTuziGroup: (group: TuziGroup) =>
-    invokeWithLog<string>('activate_tuzi_group', { group }),
   saveProvider: (
     providerName: string,
     baseUrl: string,

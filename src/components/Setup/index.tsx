@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { invoke } from '@tauri-apps/api/core';
 import {
@@ -13,14 +13,19 @@ import {
   CheckCircle,
   Circle,
 } from 'lucide-react';
-import { api, EnvironmentStatus, TuziConfigOverview, TuziGroup, TuziModelTemplate } from '../../lib/tauri';
+import { api, EnvironmentStatus, TuziConfigOverview, TuziGroup } from '../../lib/tauri';
 import { setupLogger } from '../../lib/logger';
 import clsx from 'clsx';
+import { useTuziModelSelection } from '../../hooks/useTuziModelSelection';
 
 interface InstallResult {
   success: boolean;
   message: string;
   error: string | null;
+}
+
+interface AIConfigSummary {
+  primary_model: string | null;
 }
 
 interface SetupProps {
@@ -31,46 +36,48 @@ interface SetupProps {
 export function Setup({ onComplete, embedded = false }: SetupProps) {
   const [envStatus, setEnvStatus] = useState<EnvironmentStatus | null>(null);
   const [tuziConfig, setTuziConfig] = useState<TuziConfigOverview | null>(null);
-  const [tuziTemplates, setTuziTemplates] = useState<TuziModelTemplate[]>([]);
+  const [aiSummary, setAiSummary] = useState<AIConfigSummary | null>(null);
   const [checking, setChecking] = useState(true);
   const [installing, setInstalling] = useState<'nodejs' | 'openclaw' | null>(null);
   const [savingTuzi, setSavingTuzi] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [mode, setMode] = useState<'tuzi' | 'other'>('tuzi');
   const [selectedGroup, setSelectedGroup] = useState<TuziGroup>('claude-code');
-  const [apiKey, setApiKey] = useState('');
-  const [customModel, setCustomModel] = useState('');
-  const [selectedModels, setSelectedModels] = useState<string[]>([]);
-
-  const activeTemplate = useMemo(
-    () => tuziTemplates.find((item) => item.group === selectedGroup) || null,
-    [tuziTemplates, selectedGroup]
-  );
+  const {
+    apiKey,
+    setApiKey,
+    selectedModels,
+    customModel,
+    setCustomModel,
+    displayModels,
+    fetchingModels,
+    fetchError,
+    manualEntryEnabled,
+    modelsSource,
+    cacheTimestamp,
+    warning,
+    toggleModel,
+    addCustomModel,
+    fetchModels,
+  } = useTuziModelSelection(selectedGroup, tuziConfig);
 
   const refreshState = async () => {
     setChecking(true);
     setError(null);
+    setNotice(null);
     try {
-      const [env, tuzi, templates] = await Promise.all([
+      const [env, tuzi] = await Promise.all([
         invoke<EnvironmentStatus>('check_environment'),
         api.getTuziConfig(),
-        api.getTuziTemplates(),
       ]);
+      const aiConfig = await api.getAIConfig();
       setEnvStatus(env);
       setTuziConfig(tuzi);
-      setTuziTemplates(templates);
-      const preferredGroup = tuzi.active_group || 'claude-code';
+      setAiSummary({ primary_model: aiConfig.primary_model });
+      const preferredGroup =
+        (tuzi.groups.find((item) => !item.configured)?.group || 'claude-code');
       setSelectedGroup(preferredGroup);
-      const currentGroup = tuzi.groups.find((item) => item.group === preferredGroup);
-      if (currentGroup?.models.length) {
-        setSelectedModels(currentGroup.models);
-      } else {
-        const defaultModels =
-          templates.find((item) => item.group === preferredGroup)?.suggested_models
-            .filter((item) => item.recommended)
-            .map((item) => item.id) || [];
-        setSelectedModels(defaultModels.length ? defaultModels : templates.find((item) => item.group === preferredGroup)?.suggested_models.slice(0, 1).map((item) => item.id) || []);
-      }
     } catch (e) {
       setError(`检查环境失败: ${String(e)}`);
     } finally {
@@ -120,19 +127,6 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
     }
   };
 
-  const toggleModel = (modelId: string) => {
-    setSelectedModels((prev) =>
-      prev.includes(modelId) ? prev.filter((item) => item !== modelId) : [...prev, modelId]
-    );
-  };
-
-  const addCustomModel = () => {
-    const trimmed = customModel.trim();
-    if (!trimmed || selectedModels.includes(trimmed)) return;
-    setSelectedModels((prev) => [...prev, trimmed]);
-    setCustomModel('');
-  };
-
   const handleSaveTuzi = async () => {
     if (!apiKey.trim()) {
       setError('请输入 Tuzi API Key');
@@ -145,10 +139,44 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
 
     setSavingTuzi(true);
     setError(null);
+    setNotice(null);
     try {
       await invoke<InstallResult>('init_openclaw_config');
+      const currentPrimaryModel = aiSummary?.primary_model || null;
+      const targetProviderId = selectedGroup === 'claude-code' ? 'tuzi-claude-code' : 'tuzi-codex';
+      const targetModelId = `${targetProviderId}/${selectedModels[0]}`;
+      const sameGroupPrimary = !!currentPrimaryModel && currentPrimaryModel.startsWith(`${targetProviderId}/`);
+      let shouldSwitchPrimary = !currentPrimaryModel || sameGroupPrimary;
+
+      if (!shouldSwitchPrimary && currentPrimaryModel) {
+        shouldSwitchPrimary = window.confirm(
+          `当前默认模型是 ${currentPrimaryModel}，是否切换为 ${targetModelId}？`
+        );
+      }
+
       await api.saveTuziConfig(selectedGroup, apiKey.trim(), selectedModels);
-      await refreshState();
+      if (shouldSwitchPrimary) {
+        await api.setPrimaryModel(targetModelId);
+      }
+      const nextGroup: TuziGroup = selectedGroup === 'claude-code' ? 'codex' : 'claude-code';
+      const updatedTuzi = await api.getTuziConfig();
+      const updatedEnv = await invoke<EnvironmentStatus>('check_environment');
+      const updatedAiConfig = await api.getAIConfig();
+
+      setEnvStatus(updatedEnv);
+      setTuziConfig(updatedTuzi);
+      setAiSummary({ primary_model: updatedAiConfig.primary_model });
+
+      const nextGroupConfig = updatedTuzi.groups.find((item) => item.group === nextGroup);
+      if (!nextGroupConfig?.configured) {
+        setSelectedGroup(nextGroup);
+        setNotice(
+          `已保存 ${selectedGroup === 'claude-code' ? 'Claude-Code' : 'Codex'}。你现在可以继续配置 ${nextGroup === 'claude-code' ? 'Claude-Code' : 'Codex'}，也可以直接完成后稍后再补。`
+        );
+        return;
+      }
+
+      setNotice('Tuzi 双 Provider 已配置完成。');
       await onComplete();
     } catch (e) {
       setError(`保存 Tuzi 配置失败: ${String(e)}`);
@@ -290,7 +318,9 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
                     <div>
                       <p className="text-white font-medium">Tuzi API</p>
                       <p className="text-sm text-gray-400">
-                        当前激活分组：{tuziConfig?.active_group || '未配置'}
+                        {aiSummary?.primary_model?.startsWith('tuzi-')
+                          ? `当前正在使用 ${aiSummary.primary_model}`
+                          : 'Tuzi 已配置时，当前未使用 Tuzi'}
                       </p>
                     </div>
                     <div className="text-right text-xs text-gray-500">
@@ -306,7 +336,7 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
                           key={group}
                           onClick={() => {
                             setSelectedGroup(group);
-                            if (config?.models.length) setSelectedModels(config.models);
+                            setNotice(null);
                           }}
                           className={clsx('rounded-xl border p-4 text-left transition-colors', selectedGroup === group ? 'border-claw-500 bg-claw-500/10' : 'border-dark-500 bg-dark-600 hover:bg-dark-500')}
                         >
@@ -330,60 +360,119 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
                         className="input-base pl-10"
                       />
                     </div>
+                    <div className="mt-3 flex items-center gap-3">
+                      <button
+                        onClick={fetchModels}
+                        disabled={fetchingModels}
+                        className="btn-secondary flex items-center gap-2"
+                      >
+                        {fetchingModels ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                        获取可用模型
+                      </button>
+                      {modelsSource && (
+                        <p className="text-xs text-gray-500">
+                          当前来源：{modelsSource === 'api' ? '接口实时拉取' : `本地缓存${cacheTimestamp ? `（${cacheTimestamp}）` : ''}`}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   <div>
                     <label className="block text-sm text-gray-400 mb-2">
                       模型列表
-                      <span className="ml-2 text-xs text-gray-500">第一个模型将作为默认模型</span>
+                      <span className="ml-2 text-xs text-gray-500">第一个模型将作为该分组主模型</span>
                     </label>
+                    {warning && (
+                      <div className="mb-3 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-100">
+                        实时拉取失败，已回退到本地缓存。{warning}
+                      </div>
+                    )}
+                    {fetchError && (
+                      <div className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+                        {fetchError}
+                      </div>
+                    )}
                     <div className="grid md:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
-                      {activeTemplate?.suggested_models.map((model) => (
+                      {displayModels.map((model) => (
                         <label
                           key={model.id}
                           className={clsx(
                             'flex items-center gap-3 rounded-lg border px-3 py-2 cursor-pointer',
-                            selectedModels.includes(model.id) ? 'border-claw-500 bg-claw-500/10' : 'border-dark-500 bg-dark-600'
+                            model.selected ? 'border-claw-500 bg-claw-500/10' : 'border-dark-500 bg-dark-600'
                           )}
                         >
                           <input
                             type="checkbox"
-                            checked={selectedModels.includes(model.id)}
+                            checked={model.selected}
                             onChange={() => toggleModel(model.id)}
                             className="w-4 h-4"
                           />
-                          <span className="text-sm text-white">{model.id}</span>
+                          <div className="min-w-0">
+                            <span className="text-sm text-white break-all">{model.id}</span>
+                            {model.unavailable && (
+                              <p className="text-[11px] text-yellow-300 mt-1">当前配置中，接口未返回</p>
+                            )}
+                          </div>
                         </label>
                       ))}
                     </div>
+                    {displayModels.length === 0 && (
+                      <div className="rounded-xl border border-dashed border-dark-500 bg-dark-600/50 px-4 py-6 text-sm text-gray-400">
+                        先输入 API Key 并获取模型列表。若接口和缓存都不可用，下面会开放手动输入。
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex gap-2">
-                    <input
-                      value={customModel}
-                      onChange={(e) => setCustomModel(e.target.value)}
-                      placeholder="自定义模型名称"
-                      className="input-base"
-                    />
-                    <button onClick={addCustomModel} className="btn-secondary whitespace-nowrap">
-                      添加模型
-                    </button>
-                  </div>
+                  {manualEntryEnabled && (
+                    <div className="space-y-2">
+                      <p className="text-sm text-yellow-100">当前无法获取模型列表，可手动补充模型名称作为兜底。</p>
+                      <div className="flex gap-2">
+                        <input
+                          value={customModel}
+                          onChange={(e) => setCustomModel(e.target.value)}
+                          placeholder="手动输入模型名称"
+                          className="input-base"
+                        />
+                        <button onClick={addCustomModel} className="btn-secondary whitespace-nowrap">
+                          添加模型
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {selectedModels.length > 0 && (
                     <div className="rounded-xl bg-dark-600 p-3 text-sm text-gray-300">
-                      默认模型：<span className="text-white font-medium">{selectedModels[0]}</span>
+                      本次保存后该分组主模型：<span className="text-white font-medium">{selectedModels[0]}</span>
+                    </div>
+                  )}
+
+                  {aiSummary?.primary_model && selectedModels.length > 0 && !aiSummary.primary_model.startsWith(`${selectedGroup === 'claude-code' ? 'tuzi-claude-code' : 'tuzi-codex'}/`) && (
+                    <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-100">
+                      当前默认模型是 <span className="font-medium">{aiSummary.primary_model}</span>。保存该分组后会询问你是否切换到 <span className="font-medium">{selectedGroup === 'claude-code' ? 'tuzi-claude-code' : 'tuzi-codex'}/{selectedModels[0]}</span>。
+                    </div>
+                  )}
+
+                  {notice && (
+                    <div className="rounded-xl border border-claw-500/30 bg-claw-500/10 p-4 text-sm text-claw-100">
+                      {notice}
                     </div>
                   )}
 
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs text-gray-500">
-                      保存后会同步写入 `~/.openclaw/env` 和 `~/.openclaw/openclaw.json`
+                      保存后会同步写入 `~/.openclaw/env` 和 `~/.openclaw/openclaw.json`，两个 Tuzi Provider 可同时保留。
                     </p>
-                    <button onClick={handleSaveTuzi} disabled={savingTuzi} className="btn-primary flex items-center gap-2">
-                      {savingTuzi ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
-                      快速接入 Tuzi
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {tuziConfig?.groups.some((item) => item.configured) && (
+                        <button onClick={onComplete} className="btn-secondary">
+                          完成，稍后继续
+                        </button>
+                      )}
+                      <button onClick={handleSaveTuzi} disabled={savingTuzi} className="btn-primary flex items-center gap-2">
+                        {savingTuzi ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+                        {tuziConfig?.groups.filter((item) => item.configured).length === 0 ? '保存并继续' : '保存该分组'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (

@@ -18,6 +18,10 @@ fn main() {
     
     log::info!("🦞 OpenClaw Manager 启动");
 
+    if let Err(err) = config::sync_model_registry_on_startup() {
+        log::warn!("启动时同步模型 registry 与 fallbacks 失败: {}", err);
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
@@ -48,12 +52,12 @@ fn main() {
             config::get_dashboard_url,
             // AI 配置管理
             config::get_official_providers,
+            config::fetch_tuzi_models,
             config::get_tuzi_templates,
             config::get_tuzi_config,
             config::get_ai_config,
             config::save_provider,
             config::save_tuzi_config,
-            config::activate_tuzi_group,
             config::delete_provider,
             config::set_primary_model,
             config::add_available_model,

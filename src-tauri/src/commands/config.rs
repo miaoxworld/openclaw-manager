@@ -1,17 +1,20 @@
 use crate::models::{
     AIConfigOverview, ChannelConfig, ConfiguredModel, ConfiguredProvider,
     ModelConfig, OfficialProvider, SuggestedModel, TuziConfigOverview, TuziGroup,
-    TuziGroupConfig, TuziModelTemplate,
+    TuziGroupConfig, TuziModelTemplate, TuziModelsResponse, TuziModelsSource,
 };
 use crate::utils::{file, platform, shell};
 use log::{debug, error, info, warn};
+use reqwest::Client;
 use serde_json::{json, Value};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use tauri::command;
 
 const TUZI_CLAUDE_PROVIDER_ID: &str = "tuzi-claude-code";
 const TUZI_CODEX_PROVIDER_ID: &str = "tuzi-codex";
+const TUZI_MODELS_API_URL: &str = "https://api.tu-zi.com/v1/models";
 
 fn mask_api_key(value: Option<String>) -> Option<String> {
     value.map(|key| {
@@ -61,6 +64,112 @@ fn split_csv_models(value: Option<String>) -> Vec<String> {
         .filter(|item| !item.is_empty())
         .map(|item| item.to_string())
         .collect()
+}
+
+fn normalize_model_list(models: impl IntoIterator<Item = String>) -> Vec<String> {
+    let mut normalized = Vec::new();
+    for model in models {
+        let trimmed = model.trim();
+        if trimmed.is_empty() || normalized.iter().any(|item| item == trimmed) {
+            continue;
+        }
+        normalized.push(trimmed.to_string());
+    }
+    normalized
+}
+
+fn get_tuzi_cache_dir() -> String {
+    format!("{}/cache", platform::get_config_dir())
+}
+
+fn get_tuzi_cache_file(group: &TuziGroup) -> PathBuf {
+    PathBuf::from(get_tuzi_cache_dir()).join(format!("tuzi-models-{}.json", group.as_str()))
+}
+
+fn extract_tuzi_error_message(payload: &Value) -> Option<String> {
+    let message = payload
+        .get("error")
+        .and_then(|error| error.as_object())
+        .and_then(|error| {
+            error
+                .get("message")
+                .and_then(|value| value.as_str())
+                .or_else(|| error.get("type").and_then(|value| value.as_str()))
+        })
+        .or_else(|| payload.get("message").and_then(|value| value.as_str()))
+        .or_else(|| payload.get("detail").and_then(|value| value.as_str()))?;
+    let trimmed = message.trim();
+    (!trimmed.is_empty()).then(|| trimmed.to_string())
+}
+
+fn parse_tuzi_models_payload(payload: &Value) -> Result<Vec<String>, String> {
+    let items = if let Some(data) = payload.get("data") {
+        data
+    } else {
+        payload
+    };
+
+    let array = items
+        .as_array()
+        .ok_or_else(|| "模型列表解析失败".to_string())?;
+
+    let models = normalize_model_list(array.iter().filter_map(|item| {
+        item.get("id")
+            .and_then(|value| value.as_str())
+            .map(|value| value.to_string())
+    }));
+
+    Ok(models)
+}
+
+fn write_tuzi_model_cache(group: &TuziGroup, models: &[String]) -> Result<(), String> {
+    let cache_dir = get_tuzi_cache_dir();
+    std::fs::create_dir_all(&cache_dir)
+        .map_err(|e| format!("创建 Tuzi 模型缓存目录失败: {}", e))?;
+
+    let payload = json!({
+        "group": group.as_str(),
+        "fetched_at": chrono::Utc::now().to_rfc3339(),
+        "models": models,
+    });
+
+    let cache_file = get_tuzi_cache_file(group);
+    file::write_file(
+        cache_file
+            .to_str()
+            .ok_or_else(|| "Tuzi 模型缓存路径无效".to_string())?,
+        &serde_json::to_string_pretty(&payload).map_err(|e| format!("序列化 Tuzi 模型缓存失败: {}", e))?,
+    )
+    .map_err(|e| format!("写入 Tuzi 模型缓存失败: {}", e))
+}
+
+fn read_tuzi_model_cache(group: &TuziGroup) -> Result<(Vec<String>, Option<String>), String> {
+    let cache_file = get_tuzi_cache_file(group);
+    let cache_path = cache_file
+        .to_str()
+        .ok_or_else(|| "Tuzi 模型缓存路径无效".to_string())?;
+    let raw = file::read_file(cache_path).map_err(|e| format!("读取 Tuzi 模型缓存失败: {}", e))?;
+    let payload: Value =
+        serde_json::from_str(&raw).map_err(|e| format!("解析 Tuzi 模型缓存失败: {}", e))?;
+    let models = normalize_model_list(
+        payload
+            .get("models")
+            .and_then(|value| value.as_array())
+            .into_iter()
+            .flatten()
+            .filter_map(|item| item.as_str().map(|value| value.to_string())),
+    );
+
+    if models.is_empty() {
+        return Err("Tuzi 模型缓存为空".to_string());
+    }
+
+    let timestamp = payload
+        .get("fetched_at")
+        .and_then(|value| value.as_str())
+        .map(|value| value.to_string());
+
+    Ok((models, timestamp))
 }
 
 fn ensure_config_file_parent_dirs() -> Result<(), String> {
@@ -136,7 +245,7 @@ fn sync_tuzi_provider_in_config(
     group: &TuziGroup,
     api_key: &str,
     models: &[String],
-    activate_group: bool,
+    update_default: bool,
 ) -> Result<(), String> {
     if models.is_empty() {
         return Err("至少选择一个模型".to_string());
@@ -205,7 +314,7 @@ fn sync_tuzi_provider_in_config(
         config["agents"]["defaults"]["models"][format!("{}/{}", provider_id, model_id)] = json!({});
     }
 
-    if activate_group {
+    if update_default {
         if config["agents"]["defaults"].get("model").is_none() {
             config["agents"]["defaults"]["model"] = json!({});
         }
@@ -220,6 +329,37 @@ fn sync_tuzi_provider_in_config(
     }
 
     Ok(())
+}
+
+fn build_tuzi_env_pairs(
+    groups: &[TuziGroupConfig],
+    api_key_overrides: &HashMap<String, String>,
+) -> Vec<(String, String)> {
+    let env_path = platform::get_env_file_path();
+    let mut env_pairs = Vec::new();
+
+    for group_cfg in groups {
+        if !group_cfg.configured {
+            continue;
+        }
+
+        let (api_key_key, model_key, models_key) = tuzi_group_keys(&group_cfg.group);
+        let stored_api_key = api_key_overrides
+            .get(group_cfg.group.as_str())
+            .cloned()
+            .unwrap_or_else(|| file::read_env_value(&env_path, api_key_key).unwrap_or_default());
+        if !stored_api_key.is_empty() {
+            env_pairs.push((api_key_key.to_string(), stored_api_key.clone()));
+        }
+        if let Some(primary_model) = &group_cfg.primary_model {
+            env_pairs.push((model_key.to_string(), primary_model.clone()));
+        }
+        if !group_cfg.models.is_empty() {
+            env_pairs.push((models_key.to_string(), group_cfg.models.join(",")));
+        }
+    }
+
+    env_pairs
 }
 
 fn split_model_id(full_model_id: &str) -> Result<(String, String), String> {
@@ -246,7 +386,6 @@ fn update_tuzi_env_for_primary_model(
         _ => return Ok(()),
     };
 
-    let env_path = platform::get_env_file_path();
     let overview_groups = vec![
         build_tuzi_group_config(TuziGroup::ClaudeCode),
         build_tuzi_group_config(TuziGroup::Codex),
@@ -257,11 +396,6 @@ fn update_tuzi_env_for_primary_model(
         .cloned()
         .ok_or_else(|| "目标 Tuzi 分组尚未配置".to_string())?;
 
-    let api_key = {
-        let (api_key_key, _, _) = tuzi_group_keys(&group);
-        file::read_env_value(&env_path, api_key_key).unwrap_or_default()
-    };
-
     let mut reordered_models = target.models.clone();
     if let Some(index) = reordered_models.iter().position(|item| item == &short_model_id) {
         let primary = reordered_models.remove(index);
@@ -270,39 +404,20 @@ fn update_tuzi_env_for_primary_model(
         reordered_models.insert(0, short_model_id.clone());
     }
 
-    let mut env_pairs = Vec::new();
-    for group_cfg in &overview_groups {
-        if !group_cfg.configured {
-            continue;
-        }
-        let (group_api_key_key, group_model_key, group_models_key) = tuzi_group_keys(&group_cfg.group);
-        let stored_api_key = file::read_env_value(&env_path, group_api_key_key).unwrap_or_default();
-        if !stored_api_key.is_empty() {
-            env_pairs.push((group_api_key_key.to_string(), stored_api_key.clone()));
-        }
+    let updated_groups = overview_groups
+        .into_iter()
+        .map(|mut group_cfg| {
+            if group_cfg.group == group {
+                group_cfg.primary_model = Some(short_model_id.clone());
+                group_cfg.models = reordered_models.clone();
+            }
+            group_cfg
+        })
+        .collect::<Vec<_>>();
 
-        let group_models = if group_cfg.group == group {
-            reordered_models.clone()
-        } else {
-            group_cfg.models.clone()
-        };
-
-        if let Some(primary_model) = group_models.first() {
-            env_pairs.push((group_model_key.to_string(), primary_model.clone()));
-        }
-        if !group_models.is_empty() {
-            env_pairs.push((group_models_key.to_string(), group_models.join(",")));
-        }
-
-        if group_cfg.group == group {
-            env_pairs.push(("TUZI_API_KEY".to_string(), api_key.clone()));
-            env_pairs.push(("TUZI_GROUP".to_string(), group.as_str().to_string()));
-            env_pairs.push(("TUZI_PROVIDER_ID".to_string(), provider_id.clone()));
-            env_pairs.push(("TUZI_BASE_URL".to_string(), target.base_url.clone()));
-            env_pairs.push(("TUZI_API_TYPE".to_string(), target.api_type.clone()));
-            env_pairs.push(("TUZI_MODEL".to_string(), short_model_id.clone()));
-            env_pairs.push(("TUZI_MODELS".to_string(), reordered_models.join(",")));
-        }
+    let env_pairs = build_tuzi_env_pairs(&updated_groups, &HashMap::new());
+    if env_pairs.is_empty() {
+        return Err("无法生成 Tuzi 环境变量".to_string());
     }
 
     rewrite_env_file(&env_pairs)?;
@@ -322,6 +437,180 @@ fn load_openclaw_config() -> Result<Value, String> {
         file::read_file(&config_path).map_err(|e| format!("读取配置文件失败: {}", e))?;
     
     serde_json::from_str(&content).map_err(|e| format!("解析配置文件失败: {}", e))
+}
+
+fn collect_provider_model_ids(config: &Value) -> Vec<String> {
+    config
+        .pointer("/models/providers")
+        .and_then(|value| value.as_object())
+        .map(|providers| {
+            providers
+                .iter()
+                .flat_map(|(provider_id, provider_config)| {
+                    provider_config
+                        .get("models")
+                        .and_then(|value| value.as_array())
+                        .into_iter()
+                        .flatten()
+                        .filter_map(move |model| {
+                            model
+                                .get("id")
+                                .and_then(|value| value.as_str())
+                                .map(str::trim)
+                                .filter(|value| !value.is_empty())
+                                .map(|model_id| format!("{}/{}", provider_id, model_id))
+                        })
+                })
+                .collect::<Vec<String>>()
+        })
+        .map(normalize_model_list)
+        .unwrap_or_default()
+}
+
+fn build_available_models_from_config(config: &Value) -> Vec<String> {
+    let registry_models = config
+        .pointer("/agents/defaults/models")
+        .and_then(|value| value.as_object())
+        .map(|models| models.keys().cloned().collect::<Vec<String>>())
+        .map(normalize_model_list)
+        .unwrap_or_default();
+    let primary = config
+        .pointer("/agents/defaults/model/primary")
+        .and_then(|value| value.as_str())
+        .map(|value| value.to_string());
+    let fallbacks = config
+        .pointer("/agents/defaults/model/fallbacks")
+        .and_then(|value| value.as_array())
+        .map(|items| {
+            normalize_model_list(
+                items
+                    .iter()
+                    .filter_map(|item| item.as_str().map(|value| value.to_string()))
+                    .collect::<Vec<String>>(),
+            )
+        })
+        .unwrap_or_default();
+
+    let mut ordered = Vec::new();
+    if let Some(primary_model) = primary.filter(|value| registry_models.iter().any(|item| item == value)) {
+        ordered.push(primary_model);
+    }
+    ordered.extend(fallbacks);
+    for model_id in registry_models {
+        if !ordered.iter().any(|item| item == &model_id) {
+            ordered.push(model_id);
+        }
+    }
+
+    ordered
+}
+
+fn rebuild_model_registry_and_fallbacks(config: &mut Value) -> Result<bool, String> {
+    if config.get("agents").is_none() {
+        config["agents"] = json!({});
+    }
+    if config["agents"].get("defaults").is_none() {
+        config["agents"]["defaults"] = json!({});
+    }
+    if config["agents"]["defaults"].get("model").is_none() {
+        config["agents"]["defaults"]["model"] = json!({});
+    }
+
+    let all_models = collect_provider_model_ids(config);
+
+    let current_registry = config
+        .pointer("/agents/defaults/models")
+        .and_then(|value| value.as_object())
+        .map(|models| models.keys().cloned().collect::<Vec<String>>())
+        .map(normalize_model_list)
+        .unwrap_or_default();
+
+    let current_primary = config
+        .pointer("/agents/defaults/model/primary")
+        .and_then(|value| value.as_str())
+        .map(|value| value.to_string());
+    let current_fallbacks = config
+        .pointer("/agents/defaults/model/fallbacks")
+        .and_then(|value| value.as_array())
+        .map(|items| {
+            normalize_model_list(
+                items
+                    .iter()
+                    .filter_map(|item| item.as_str().map(|value| value.to_string()))
+                    .collect::<Vec<String>>(),
+            )
+        })
+        .unwrap_or_default();
+
+    let mut registry_object = serde_json::Map::new();
+    for model_id in &all_models {
+        registry_object.insert(model_id.clone(), json!({}));
+    }
+    config["agents"]["defaults"]["models"] = Value::Object(registry_object);
+
+    let next_fallbacks = if let Some(primary) = current_primary.as_deref() {
+        let mut ordered = Vec::new();
+        let mut parts = primary.splitn(2, '/');
+        let primary_provider = parts.next().unwrap_or_default();
+
+        if !primary_provider.is_empty() {
+            for model_id in &all_models {
+                if model_id == primary {
+                    continue;
+                }
+                if model_id.starts_with(&format!("{}/", primary_provider)) {
+                    ordered.push(model_id.clone());
+                }
+            }
+            for model_id in &all_models {
+                if model_id == primary {
+                    continue;
+                }
+                if !model_id.starts_with(&format!("{}/", primary_provider)) {
+                    ordered.push(model_id.clone());
+                }
+            }
+        } else {
+            ordered.extend(all_models.iter().filter(|model_id| model_id.as_str() != primary).cloned());
+        }
+
+        if !all_models.iter().any(|model_id| model_id == primary) {
+            warn!(
+                "[AI 配置] 当前主模型 {} 不在已配置 provider 模型列表中，fallback 将退化为全量平铺",
+                primary
+            );
+            all_models
+                .iter()
+                .filter(|model_id| model_id.as_str() != primary)
+                .cloned()
+                .collect::<Vec<String>>()
+        } else {
+            ordered
+        }
+    } else {
+        Vec::new()
+    };
+
+    config["agents"]["defaults"]["model"]["fallbacks"] = json!(next_fallbacks);
+
+    Ok(current_registry != all_models || current_fallbacks != next_fallbacks)
+}
+
+pub fn sync_model_registry_on_startup() -> Result<(), String> {
+    let config_path = platform::get_config_file_path();
+    if !file::file_exists(&config_path) {
+        return Ok(());
+    }
+
+    let mut config = load_openclaw_config()?;
+    if rebuild_model_registry_and_fallbacks(&mut config)? {
+        save_openclaw_config(&config)?;
+        info!("[AI 配置] 启动时已同步模型 registry 与 fallbacks");
+    } else {
+        info!("[AI 配置] 启动时模型 registry 与 fallbacks 已是最新");
+    }
+
+    Ok(())
 }
 
 /// 保存 openclaw.json 配置
@@ -734,6 +1023,78 @@ pub async fn get_official_providers() -> Result<Vec<OfficialProvider>, String> {
 }
 
 #[command]
+pub async fn fetch_tuzi_models(
+    group: TuziGroup,
+    api_key: String,
+) -> Result<TuziModelsResponse, String> {
+    let trimmed_api_key = api_key.trim();
+    if trimmed_api_key.is_empty() {
+        return Err("API Key 不能为空".to_string());
+    }
+
+    let client = Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(10))
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("初始化 Tuzi 模型请求失败: {}", e))?;
+
+    let fetch_error = match client
+        .get(TUZI_MODELS_API_URL)
+        .bearer_auth(trimmed_api_key)
+        .send()
+        .await
+    {
+        Ok(response) => {
+            let status = response.status();
+            let body = response
+                .text()
+                .await
+                .map_err(|e| format!("读取 Tuzi 模型响应失败: {}", e))?;
+
+            if status.is_success() {
+                let payload: Value = serde_json::from_str(&body)
+                    .map_err(|e| format!("解析 Tuzi 模型响应失败: {}", e))?;
+                let models = parse_tuzi_models_payload(&payload)?;
+                if models.is_empty() {
+                    "接口返回成功，但当前 Key 没有可见模型".to_string()
+                } else {
+                    if let Err(error) = write_tuzi_model_cache(&group, &models) {
+                        warn!("[Tuzi] 写入模型缓存失败: {}", error);
+                    }
+                    return Ok(TuziModelsResponse {
+                        models,
+                        source: TuziModelsSource::Api,
+                        cache_timestamp: None,
+                        warning: None,
+                    });
+                }
+            } else {
+                let payload = serde_json::from_str::<Value>(&body).ok();
+                let error_message = payload
+                    .as_ref()
+                    .and_then(extract_tuzi_error_message)
+                    .map(|message| format!(": {}", message))
+                    .unwrap_or_default();
+                format!("接口返回 HTTP {}{}", status.as_u16(), error_message)
+            }
+        }
+        Err(error) => {
+            format!("请求模型列表失败: {}", error)
+        }
+    };
+
+    match read_tuzi_model_cache(&group) {
+        Ok((models, cache_timestamp)) => Ok(TuziModelsResponse {
+            models,
+            source: TuziModelsSource::Cache,
+            cache_timestamp,
+            warning: Some(fetch_error),
+        }),
+        Err(_) => Err(fetch_error),
+    }
+}
+
+#[command]
 pub async fn get_tuzi_templates() -> Result<Vec<TuziModelTemplate>, String> {
     Ok(vec![
         TuziModelTemplate {
@@ -742,31 +1103,7 @@ pub async fn get_tuzi_templates() -> Result<Vec<TuziModelTemplate>, String> {
             name: "Tuzi Claude-Code".to_string(),
             default_base_url: "https://api.tu-zi.com".to_string(),
             api_type: "anthropic-messages".to_string(),
-            suggested_models: vec![
-                "claude-sonnet-4-6",
-                "claude-sonnet-4-6-thinking",
-                "claude-sonnet-4-5-20250929-thinking",
-                "claude-sonnet-4-5-20250929",
-                "claude-sonnet-4-20250514-thinking",
-                "claude-sonnet-4-20250514",
-                "claude-opus-4-6",
-                "claude-opus-4-5-20251101-thinking",
-                "claude-opus-4-5-20251101",
-                "claude-opus-4-5",
-                "claude-opus-4-20250514-thinking",
-                "claude-opus-4-20250514",
-            ]
-            .into_iter()
-            .enumerate()
-            .map(|(idx, id)| SuggestedModel {
-                id: id.to_string(),
-                name: id.to_string(),
-                description: None,
-                context_window: Some(200000),
-                max_tokens: Some(8192),
-                recommended: idx == 0,
-            })
-            .collect(),
+            suggested_models: Vec::<SuggestedModel>::new(),
         },
         TuziModelTemplate {
             group: TuziGroup::Codex,
@@ -774,48 +1111,13 @@ pub async fn get_tuzi_templates() -> Result<Vec<TuziModelTemplate>, String> {
             name: "Tuzi Codex".to_string(),
             default_base_url: "https://api.tu-zi.com/v1".to_string(),
             api_type: "openai-responses".to_string(),
-            suggested_models: vec![
-                "gpt-5.4",
-                "gpt-5.3-codex",
-                "gpt-5.2-medium",
-                "gpt-5.2-high",
-                "gpt-5.2-codex",
-                "gpt-5.2",
-                "gpt-5.1-high",
-                "gpt-5.1-medium",
-                "gpt-5.1-low",
-                "gpt-5.1-codex-max-high",
-                "gpt-5.1-codex-max",
-                "gpt-5.1",
-                "gpt-5-codex",
-                "gpt-5-high",
-                "gpt-5-low",
-                "gpt-5",
-            ]
-            .into_iter()
-            .enumerate()
-            .map(|(idx, id)| SuggestedModel {
-                id: id.to_string(),
-                name: id.to_string(),
-                description: None,
-                context_window: Some(200000),
-                max_tokens: Some(100000),
-                recommended: idx == 0,
-            })
-            .collect(),
+            suggested_models: Vec::<SuggestedModel>::new(),
         },
     ])
 }
 
 #[command]
 pub async fn get_tuzi_config() -> Result<TuziConfigOverview, String> {
-    let env_path = platform::get_env_file_path();
-    let active_group = file::read_env_value(&env_path, "TUZI_GROUP").and_then(|value| match value.as_str() {
-        "codex" => Some(TuziGroup::Codex),
-        "claude-code" => Some(TuziGroup::ClaudeCode),
-        _ => None,
-    });
-
     let groups = vec![
         build_tuzi_group_config(TuziGroup::ClaudeCode),
         build_tuzi_group_config(TuziGroup::Codex),
@@ -824,10 +1126,6 @@ pub async fn get_tuzi_config() -> Result<TuziConfigOverview, String> {
 
     Ok(TuziConfigOverview {
         configured,
-        active_group,
-        active_provider_id: file::read_env_value(&env_path, "TUZI_PROVIDER_ID"),
-        active_model: file::read_env_value(&env_path, "TUZI_MODEL"),
-        active_models: split_csv_models(file::read_env_value(&env_path, "TUZI_MODELS")),
         groups,
     })
 }
@@ -848,121 +1146,43 @@ pub async fn save_tuzi_config(
     ensure_config_file_parent_dirs()?;
 
     let mut config = load_openclaw_config()?;
-    sync_tuzi_provider_in_config(&mut config, &group, api_key.trim(), &models, true)?;
+    let current_primary = config
+        .pointer("/agents/defaults/model/primary")
+        .and_then(|value| value.as_str())
+        .map(|value| value.to_string());
+    let target_provider_id = tuzi_group_settings(&group).0.to_string();
+    let should_update_default = match current_primary.as_deref() {
+        None | Some("") => true,
+        Some(primary) => primary.starts_with(&format!("{}/", target_provider_id)),
+    };
+    sync_tuzi_provider_in_config(&mut config, &group, api_key.trim(), &models, should_update_default)?;
+    rebuild_model_registry_and_fallbacks(&mut config)?;
     save_openclaw_config(&config)?;
 
-    let current = get_tuzi_config().await?;
-    let claude = current
-        .groups
-        .iter()
-        .find(|item| item.group == TuziGroup::ClaudeCode)
-        .cloned()
-        .unwrap_or_else(|| build_tuzi_group_config(TuziGroup::ClaudeCode));
-    let codex = current
-        .groups
-        .iter()
-        .find(|item| item.group == TuziGroup::Codex)
-        .cloned()
-        .unwrap_or_else(|| build_tuzi_group_config(TuziGroup::Codex));
-
-    let active_models = models.join(",");
-    let (provider_id, base_url, api_type) = tuzi_group_settings(&group);
     let primary_model = models[0].clone();
-    let mut env_pairs = vec![
-        ("TUZI_API_KEY".to_string(), api_key.trim().to_string()),
-        ("TUZI_GROUP".to_string(), group.as_str().to_string()),
-        ("TUZI_PROVIDER_ID".to_string(), provider_id.to_string()),
-        ("TUZI_BASE_URL".to_string(), base_url.to_string()),
-        ("TUZI_API_TYPE".to_string(), api_type.to_string()),
-        ("TUZI_MODEL".to_string(), primary_model.clone()),
-        ("TUZI_MODELS".to_string(), active_models.clone()),
-    ];
-
-    for group_cfg in [&claude, &codex] {
-        if group_cfg.configured || group_cfg.group == group {
-            let (api_key_key, model_key, models_key) = tuzi_group_keys(&group_cfg.group);
-            let env_api_key = if group_cfg.group == group {
-                api_key.trim().to_string()
+    let current = get_tuzi_config().await?;
+    let updated_groups = current
+        .groups
+        .iter()
+        .map(|group_cfg| {
+            if group_cfg.group == group {
+                let mut updated = group_cfg.clone();
+                updated.configured = true;
+                updated.api_key_masked = mask_api_key(Some(api_key.trim().to_string()));
+                updated.primary_model = Some(primary_model.clone());
+                updated.models = models.clone();
+                updated
             } else {
-                file::read_env_value(&platform::get_env_file_path(), api_key_key).unwrap_or_default()
-            };
-            if !env_api_key.is_empty() {
-                env_pairs.push((api_key_key.to_string(), env_api_key));
+                group_cfg.clone()
             }
-            if let Some(model) = if group_cfg.group == group {
-                Some(primary_model.clone())
-            } else {
-                group_cfg.primary_model.clone()
-            } {
-                env_pairs.push((model_key.to_string(), model));
-            }
-            let models_csv = if group_cfg.group == group {
-                active_models.clone()
-            } else {
-                group_cfg.models.join(",")
-            };
-            if !models_csv.is_empty() {
-                env_pairs.push((models_key.to_string(), models_csv));
-            }
-        }
-    }
-
+        })
+        .collect::<Vec<_>>();
+    let mut api_key_overrides = HashMap::new();
+    api_key_overrides.insert(group.as_str().to_string(), api_key.trim().to_string());
+    let env_pairs = build_tuzi_env_pairs(&updated_groups, &api_key_overrides);
     rewrite_env_file(&env_pairs)?;
 
     Ok(format!("Tuzi {} 配置已保存", group.as_str()))
-}
-
-#[command]
-pub async fn activate_tuzi_group(group: TuziGroup) -> Result<String, String> {
-    let overview = get_tuzi_config().await?;
-    let target = overview
-        .groups
-        .iter()
-        .find(|item| item.group == group && item.configured)
-        .cloned()
-        .ok_or_else(|| "目标 Tuzi 分组尚未配置".to_string())?;
-
-    let env_path = platform::get_env_file_path();
-    let (api_key_key, _, _) = tuzi_group_keys(&group);
-    let api_key = file::read_env_value(&env_path, api_key_key)
-        .ok_or_else(|| "目标 Tuzi 分组缺少 API Key".to_string())?;
-    let mut config = load_openclaw_config()?;
-    sync_tuzi_provider_in_config(&mut config, &group, &api_key, &target.models, true)?;
-    save_openclaw_config(&config)?;
-
-    let mut env_pairs = Vec::new();
-    for group_cfg in &overview.groups {
-        if !group_cfg.configured {
-            continue;
-        }
-        let (group_api_key_key, group_model_key, group_models_key) = tuzi_group_keys(&group_cfg.group);
-        let stored_api_key = file::read_env_value(&env_path, group_api_key_key).unwrap_or_default();
-        if !stored_api_key.is_empty() {
-            env_pairs.push((group_api_key_key.to_string(), stored_api_key.clone()));
-        }
-        if let Some(primary_model) = &group_cfg.primary_model {
-            env_pairs.push((group_model_key.to_string(), primary_model.clone()));
-        }
-        if !group_cfg.models.is_empty() {
-            env_pairs.push((group_models_key.to_string(), group_cfg.models.join(",")));
-        }
-        if group_cfg.group == group {
-            env_pairs.push(("TUZI_API_KEY".to_string(), stored_api_key));
-            env_pairs.push(("TUZI_GROUP".to_string(), group.as_str().to_string()));
-            env_pairs.push(("TUZI_PROVIDER_ID".to_string(), target.provider_id.clone()));
-            env_pairs.push(("TUZI_BASE_URL".to_string(), target.base_url.clone()));
-            env_pairs.push(("TUZI_API_TYPE".to_string(), target.api_type.clone()));
-            if let Some(primary_model) = &target.primary_model {
-                env_pairs.push(("TUZI_MODEL".to_string(), primary_model.clone()));
-            }
-            if !target.models.is_empty() {
-                env_pairs.push(("TUZI_MODELS".to_string(), target.models.join(",")));
-            }
-        }
-    }
-
-    rewrite_env_file(&env_pairs)?;
-    Ok(format!("已切换到 Tuzi 分组 {}", group.as_str()))
 }
 
 /// 获取 AI 配置概览
@@ -984,11 +1204,7 @@ pub async fn get_ai_config() -> Result<AIConfigOverview, String> {
     info!("[AI 配置] 主模型: {:?}", primary_model);
 
     // 解析可用模型列表
-    let available_models: Vec<String> = config
-        .pointer("/agents/defaults/models")
-        .and_then(|v| v.as_object())
-        .map(|obj| obj.keys().cloned().collect())
-        .unwrap_or_default();
+    let available_models = build_available_models_from_config(&config);
     info!("[AI 配置] 可用模型数: {}", available_models.len());
 
     // 解析已配置的 Provider
@@ -1206,6 +1422,7 @@ pub async fn save_provider(
     }
     config["meta"]["lastTouchedAt"] = json!(now);
 
+    rebuild_model_registry_and_fallbacks(&mut config)?;
     save_openclaw_config(&config)?;
     info!("[保存 Provider] ✓ Provider {} 保存成功", provider_name);
 
@@ -1253,6 +1470,7 @@ pub async fn delete_provider(provider_name: String) -> Result<String, String> {
         }
     }
 
+    rebuild_model_registry_and_fallbacks(&mut config)?;
     save_openclaw_config(&config)?;
     info!("[删除 Provider] ✓ Provider {} 已删除", provider_name);
 
@@ -1280,18 +1498,7 @@ pub async fn set_primary_model(model_id: String) -> Result<String, String> {
 
     // 设置主模型
     config["agents"]["defaults"]["model"]["primary"] = json!(model_id);
-    if let Some(provider_models) = config
-        .pointer(&format!("/models/providers/{}/models", provider_id))
-        .and_then(|value| value.as_array())
-    {
-        let fallbacks = provider_models
-            .iter()
-            .filter_map(|model| model.get("id").and_then(|value| value.as_str()))
-            .filter(|id| *id != short_model_id)
-            .map(|id| format!("{}/{}", provider_id, id))
-            .collect::<Vec<String>>();
-        config["agents"]["defaults"]["model"]["fallbacks"] = json!(fallbacks);
-    }
+    rebuild_model_registry_and_fallbacks(&mut config)?;
 
     save_openclaw_config(&config)?;
     update_tuzi_env_for_primary_model(&format!("{}/{}", provider_id, short_model_id))?;
@@ -1708,5 +1915,152 @@ pub async fn install_feishu_plugin() -> Result<String, String> {
             error!("[飞书插件] ✗ 安装失败: {}", e);
             Err(format!("安装飞书插件失败: {}\n\n请手动执行: openclaw plugins install @m1heng-clawd/feishu", e))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_tuzi_models_payload_filters_empty_and_duplicates() {
+        let payload = json!({
+            "data": [
+                { "id": "gpt-5.4" },
+                { "id": "gpt-5.4" },
+                { "id": " claude-sonnet-4-6 " },
+                { "name": "missing-id" },
+                { "id": "" }
+            ]
+        });
+
+        let models = parse_tuzi_models_payload(&payload).expect("should parse");
+        assert_eq!(models, vec!["gpt-5.4".to_string(), "claude-sonnet-4-6".to_string()]);
+    }
+
+    #[test]
+    fn extract_tuzi_error_message_reads_nested_error_message() {
+        let payload = json!({
+            "error": {
+                "message": "invalid api key"
+            }
+        });
+
+        assert_eq!(
+            extract_tuzi_error_message(&payload),
+            Some("invalid api key".to_string())
+        );
+    }
+
+    #[test]
+    fn tuzi_model_cache_roundtrip_works() {
+        let temp_home = std::env::temp_dir().join(format!(
+            "openclaw-manager-tests-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("valid time")
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&temp_home).expect("create temp home");
+
+        let previous_home = std::env::var("HOME").ok();
+        std::env::set_var("HOME", &temp_home);
+
+        let models = vec!["gpt-5.4".to_string(), "gpt-5.3-codex".to_string()];
+        write_tuzi_model_cache(&TuziGroup::Codex, &models).expect("write cache");
+        let (cached_models, timestamp) = read_tuzi_model_cache(&TuziGroup::Codex).expect("read cache");
+
+        assert_eq!(cached_models, models);
+        assert!(timestamp.is_some());
+
+        if let Some(home) = previous_home {
+            std::env::set_var("HOME", home);
+        } else {
+            std::env::remove_var("HOME");
+        }
+        let _ = std::fs::remove_dir_all(temp_home);
+    }
+
+    #[test]
+    fn rebuild_model_registry_and_fallbacks_collects_all_provider_models() {
+        let mut config = json!({
+            "models": {
+                "providers": {
+                    "openai": {
+                        "models": [
+                            { "id": "gpt-5" },
+                            { "id": "gpt-4.1" }
+                        ]
+                    },
+                    "anthropic": {
+                        "models": [
+                            { "id": "claude-sonnet-4-5" }
+                        ]
+                    }
+                }
+            },
+            "agents": {
+                "defaults": {
+                    "model": {
+                        "primary": "openai/gpt-5"
+                    }
+                }
+            }
+        });
+
+        let changed = rebuild_model_registry_and_fallbacks(&mut config).expect("rebuild should succeed");
+        assert!(changed);
+        assert_eq!(
+            build_available_models_from_config(&config),
+            vec![
+                "openai/gpt-5".to_string(),
+                "openai/gpt-4.1".to_string(),
+                "anthropic/claude-sonnet-4-5".to_string()
+            ]
+        );
+        assert_eq!(
+            config["agents"]["defaults"]["model"]["fallbacks"],
+            json!(["openai/gpt-4.1", "anthropic/claude-sonnet-4-5"])
+        );
+    }
+
+    #[test]
+    fn rebuild_model_registry_and_fallbacks_handles_missing_primary() {
+        let mut config = json!({
+            "models": {
+                "providers": {
+                    "openai": {
+                        "models": [
+                            { "id": "gpt-5" }
+                        ]
+                    },
+                    "anthropic": {
+                        "models": [
+                            { "id": "claude-sonnet-4-5" }
+                        ]
+                    }
+                }
+            },
+            "agents": {
+                "defaults": {
+                    "model": {
+                        "primary": "missing/provider"
+                    }
+                }
+            }
+        });
+
+        rebuild_model_registry_and_fallbacks(&mut config).expect("rebuild should succeed");
+        assert_eq!(
+            config["agents"]["defaults"]["model"]["fallbacks"],
+            json!(["anthropic/claude-sonnet-4-5", "openai/gpt-5"])
+        );
+        assert_eq!(
+            build_available_models_from_config(&config),
+            vec![
+                "anthropic/claude-sonnet-4-5".to_string(),
+                "openai/gpt-5".to_string()
+            ]
+        );
     }
 }

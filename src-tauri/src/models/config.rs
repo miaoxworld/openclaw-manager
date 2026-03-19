@@ -345,11 +345,24 @@ pub struct TuziGroupConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TuziConfigOverview {
     pub configured: bool,
-    pub active_group: Option<TuziGroup>,
-    pub active_provider_id: Option<String>,
-    pub active_model: Option<String>,
-    pub active_models: Vec<String>,
     pub groups: Vec<TuziGroupConfig>,
+}
+
+/// Tuzi 模型来源
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TuziModelsSource {
+    Api,
+    Cache,
+}
+
+/// Tuzi 实时模型拉取结果
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TuziModelsResponse {
+    pub models: Vec<String>,
+    pub source: TuziModelsSource,
+    pub cache_timestamp: Option<String>,
+    pub warning: Option<String>,
 }
 
 /// Tuzi 模型模板
