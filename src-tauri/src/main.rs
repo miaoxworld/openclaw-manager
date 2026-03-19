@@ -8,14 +8,12 @@ mod commands;
 mod models;
 mod utils;
 
-use commands::{config, diagnostics, installer, process, service};
+use commands::{config, diagnostics, installer, process, service, skills};
 
 fn main() {
     // 初始化日志 - 默认显示 info 级别日志
-    env_logger::Builder::from_env(
-        env_logger::Env::default().default_filter_or("info")
-    ).init();
-    
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
     log::info!("🦞 OpenClaw Manager 启动");
 
     if let Err(err) = config::sync_model_registry_on_startup() {
@@ -82,6 +80,14 @@ fn main() {
             // 版本更新
             installer::check_openclaw_update,
             installer::update_openclaw,
+            // Skills 管理
+            skills::get_tuzi_skills_manifest,
+            skills::get_tuzi_skills_status,
+            skills::install_tuzi_skills_group,
+            skills::install_all_tuzi_skills,
+            skills::remove_tuzi_skills_group,
+            skills::check_tuzi_skills_requirements,
+            skills::refresh_tuzi_skills,
         ])
         .run(tauri::generate_context!())
         .expect("运行 Tauri 应用时发生错误");

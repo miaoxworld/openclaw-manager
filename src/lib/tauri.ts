@@ -195,6 +195,59 @@ export interface EnvironmentStatus {
   os: string;
 }
 
+export interface TuziSkillsPluginGroup {
+  name: string;
+  description: string;
+  skills: string[];
+}
+
+export interface TuziSkillsManifest {
+  marketplace_name: string;
+  version: string;
+  plugins: TuziSkillsPluginGroup[];
+  stale: boolean;
+  source: string;
+  error: string | null;
+}
+
+export interface TuziSkillsGroupStatus {
+  group_name: string;
+  installed_count: number;
+  total_count: number;
+  fully_installed: boolean;
+}
+
+export interface TuziSkillsStatus {
+  cli_available: boolean;
+  installed_skills: string[];
+  group_status: TuziSkillsGroupStatus[];
+  last_checked_at: string;
+  error: string | null;
+}
+
+export interface TuziSkillsCheckResult {
+  all_up_to_date: boolean;
+  checked_count: number;
+  failed_count: number;
+  raw_output: string;
+  error: string | null;
+}
+
+export interface TuziSkillInstallResult {
+  running: boolean;
+  success: boolean;
+  message: string;
+  error: string | null;
+  stdout: string;
+  stderr: string;
+}
+
+export interface TuziSkillsRefreshResult {
+  manifest: TuziSkillsManifest;
+  status: TuziSkillsStatus;
+  requirements: TuziSkillsCheckResult;
+}
+
 // API 封装（带日志）
 export const api = {
   // 服务管理
@@ -263,4 +316,20 @@ export const api = {
     invokeWithLog<AITestResult>('test_model_connection', { providerId, modelId }),
   testChannel: (channelType: string) =>
     invokeWithLog<unknown>('test_channel', { channelType }),
+
+  // Skills
+  getTuziSkillsManifest: () =>
+    invokeWithLog<TuziSkillsManifest>('get_tuzi_skills_manifest'),
+  getTuziSkillsStatus: () =>
+    invokeWithLog<TuziSkillsStatus>('get_tuzi_skills_status'),
+  installTuziSkillsGroup: (groupName: string) =>
+    invokeWithLog<TuziSkillInstallResult>('install_tuzi_skills_group', { groupName }),
+  installAllTuziSkills: () =>
+    invokeWithLog<TuziSkillInstallResult>('install_all_tuzi_skills'),
+  removeTuziSkillsGroup: (groupName: string) =>
+    invokeWithLog<TuziSkillInstallResult>('remove_tuzi_skills_group', { groupName }),
+  checkTuziSkillsRequirements: () =>
+    invokeWithLog<TuziSkillsCheckResult>('check_tuzi_skills_requirements'),
+  refreshTuziSkills: () =>
+    invokeWithLog<TuziSkillsRefreshResult>('refresh_tuzi_skills'),
 };

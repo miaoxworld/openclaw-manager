@@ -5,6 +5,7 @@ import { Sidebar } from './components/Layout/Sidebar';
 import { Header } from './components/Layout/Header';
 import { Dashboard } from './components/Dashboard';
 import { AIConfig } from './components/AIConfig';
+import { Skills } from './components/Skills';
 import { Channels } from './components/Channels';
 import { Settings } from './components/Settings';
 import { Testing } from './components/Testing';
@@ -13,7 +14,7 @@ import { appLogger } from './lib/logger';
 import { EnvironmentStatus, isTauri } from './lib/tauri';
 import { Download, X, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
-export type PageType = 'dashboard' | 'ai' | 'channels' | 'testing' | 'logs' | 'settings';
+export type PageType = 'dashboard' | 'ai' | 'skills' | 'channels' | 'testing' | 'logs' | 'settings';
 
 interface ServiceStatus {
   running: boolean;
@@ -164,10 +165,22 @@ function App() {
     const pages: Record<PageType, JSX.Element> = {
       dashboard: <Dashboard envStatus={envStatus} onSetupComplete={handleSetupComplete} />,
       ai: <AIConfig />,
+      skills: (
+        <Skills
+          envStatus={envStatus}
+          onNavigateToSettings={() => setCurrentPage('settings')}
+          onNavigateToSetup={() => setCurrentPage('dashboard')}
+        />
+      ),
       channels: <Channels />,
       testing: <Testing />,
       logs: <Logs />,
-      settings: <Settings onEnvironmentChange={checkEnvironment} />,
+      settings: (
+        <Settings
+          onEnvironmentChange={checkEnvironment}
+          onNavigateToPage={setCurrentPage}
+        />
+      ),
     };
 
     return (
