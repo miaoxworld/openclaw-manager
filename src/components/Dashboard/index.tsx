@@ -18,6 +18,7 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
   const [status, setStatus] = useState<ServiceStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [logsExpanded, setLogsExpanded] = useState(true);
   const [autoRefreshLogs, setAutoRefreshLogs] = useState(true);
@@ -72,12 +73,15 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
   const handleStart = async () => {
     if (!isTauri()) return;
     setActionLoading(true);
+    setActionError(null);
     try {
       await api.startService();
       await fetchStatus();
       await fetchLogs();
     } catch (e) {
       console.error('启动失败:', e);
+      setActionError(String(e));
+      await fetchLogs();
     } finally {
       setActionLoading(false);
     }
@@ -86,12 +90,14 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
   const handleStop = async () => {
     if (!isTauri()) return;
     setActionLoading(true);
+    setActionError(null);
     try {
       await api.stopService();
       await fetchStatus();
       await fetchLogs();
     } catch (e) {
       console.error('停止失败:', e);
+      setActionError(String(e));
     } finally {
       setActionLoading(false);
     }
@@ -100,12 +106,15 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
   const handleRestart = async () => {
     if (!isTauri()) return;
     setActionLoading(true);
+    setActionError(null);
     try {
       await api.restartService();
       await fetchStatus();
       await fetchLogs();
     } catch (e) {
       console.error('重启失败:', e);
+      setActionError(String(e));
+      await fetchLogs();
     } finally {
       setActionLoading(false);
     }
@@ -172,6 +181,14 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
             onRestart={handleRestart}
           />
         </motion.div>
+
+        {actionError && (
+          <motion.div variants={itemVariants}>
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              操作失败：{actionError}
+            </div>
+          </motion.div>
+        )}
 
         {/* 实时日志 */}
         <motion.div variants={itemVariants}>

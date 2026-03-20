@@ -1,9 +1,10 @@
-use std::process::{Command, Output};
+use std::process::{Command, Output, Stdio};
 use std::io;
 use std::collections::HashMap;
 use crate::utils::platform;
 use crate::utils::file;
 use log::{info, debug, warn};
+use std::time::{Duration, Instant};
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -350,21 +351,19 @@ fn get_windows_openclaw_paths() -> Vec<String> {
 }
 
 /// 执行 openclaw 命令并获取输出
-pub fn run_openclaw(args: &[&str]) -> Result<String, String> {
-    debug!("[Shell] 执行 openclaw 命令: {:?}", args);
-    
+fn build_openclaw_command(args: &[&str]) -> Result<Command, String> {
     let openclaw_path = get_openclaw_path().ok_or_else(|| {
         warn!("[Shell] 找不到 openclaw 命令");
         "找不到 openclaw 命令，请确保已通过 npm install -g openclaw 安装".to_string()
     })?;
-    
+
     debug!("[Shell] openclaw 路径: {}", openclaw_path);
-    
+
     // 获取扩展的 PATH，确保能找到 node
     let extended_path = get_extended_path();
     debug!("[Shell] 扩展 PATH: {}", extended_path);
-    
-    let output = if openclaw_path.ends_with(".cmd") {
+
+    let mut command = if openclaw_path.ends_with(".cmd") {
         // Windows: .cmd 文件需要通过 cmd /c 执行
         let mut cmd_args = vec!["/c", &openclaw_path];
         cmd_args.extend(args);
@@ -372,23 +371,36 @@ pub fn run_openclaw(args: &[&str]) -> Result<String, String> {
         cmd.args(&cmd_args)
             .env("OPENCLAW_GATEWAY_TOKEN", DEFAULT_GATEWAY_TOKEN)
             .env("PATH", &extended_path);
-        
+
         #[cfg(windows)]
         cmd.creation_flags(CREATE_NO_WINDOW);
-        
-        cmd.output()
+
+        cmd
     } else {
         let mut cmd = Command::new(&openclaw_path);
         cmd.args(args)
             .env("OPENCLAW_GATEWAY_TOKEN", DEFAULT_GATEWAY_TOKEN)
             .env("PATH", &extended_path);
-        
+
         #[cfg(windows)]
         cmd.creation_flags(CREATE_NO_WINDOW);
-        
-        cmd.output()
+
+        cmd
     };
-    
+
+    let user_env_vars = load_openclaw_env_vars();
+    for (key, value) in user_env_vars {
+        command.env(key, value);
+    }
+
+    Ok(command)
+}
+
+pub fn run_openclaw(args: &[&str]) -> Result<String, String> {
+    debug!("[Shell] 执行 openclaw 命令: {:?}", args);
+
+    let output = build_openclaw_command(args)?.output();
+
     match output {
         Ok(out) => {
             let stdout = String::from_utf8_lossy(&out.stdout).to_string();
@@ -405,6 +417,57 @@ pub fn run_openclaw(args: &[&str]) -> Result<String, String> {
         Err(e) => {
             warn!("[Shell] 执行 openclaw 失败: {}", e);
             Err(format!("执行 openclaw 失败: {}", e))
+        }
+    }
+}
+
+pub fn run_openclaw_with_timeout(args: &[&str], timeout: Duration) -> Result<String, String> {
+    debug!("[Shell] 执行带超时的 openclaw 命令: {:?}, timeout={:?}", args, timeout);
+
+    let mut command = build_openclaw_command(args)?;
+    command.stdout(Stdio::piped()).stderr(Stdio::piped());
+
+    let mut child = command
+        .spawn()
+        .map_err(|e| format!("执行 openclaw 失败: {}", e))?;
+    let start = Instant::now();
+
+    loop {
+        match child.try_wait() {
+            Ok(Some(_status)) => {
+                let output = child
+                    .wait_with_output()
+                    .map_err(|e| format!("读取 openclaw 输出失败: {}", e))?;
+                let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+                if output.status.success() {
+                    return Ok(stdout);
+                }
+                return Err(format!("{}\n{}", stdout, stderr).trim().to_string());
+            }
+            Ok(None) => {
+                if start.elapsed() >= timeout {
+                    let _ = child.kill();
+                    let output = child.wait_with_output().ok();
+                    let details = output
+                        .as_ref()
+                        .map(|out| {
+                            let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                            let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+                            format!("{}\n{}", stdout, stderr).trim().to_string()
+                        })
+                        .filter(|text| !text.is_empty());
+                    return Err(match details {
+                        Some(text) => format!("openclaw 命令执行超时（>{} 秒）\n{}", timeout.as_secs(), text),
+                        None => format!("openclaw 命令执行超时（>{} 秒）", timeout.as_secs()),
+                    });
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
+            Err(e) => {
+                let _ = child.kill();
+                return Err(format!("等待 openclaw 进程失败: {}", e));
+            }
         }
     }
 }

@@ -121,6 +121,12 @@ interface AITestResult {
   latency_ms: number | null;
 }
 
+interface ConfigInitResult {
+  success: boolean;
+  message: string;
+  error: string | null;
+}
+
 // ============ 添加/编辑 Provider 对话框 ============
 
 interface ProviderDialogProps {
@@ -1464,6 +1470,7 @@ export function AIConfig() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<AITestResult | null>(null);
   const [modelActionTarget, setModelActionTarget] = useState<ModelActionTarget | null>(null);
+  const [initializingConfig, setInitializingConfig] = useState(false);
 
   const handleEditProvider = (provider: ConfiguredProvider) => {
     setEditingProvider(provider);
@@ -1519,6 +1526,7 @@ export function AIConfig() {
 
   const loadData = useCallback(async () => {
     aiLogger.info('AIConfig 组件加载数据...');
+    setLoading(true);
     setError(null);
     
     try {
@@ -1533,6 +1541,8 @@ export function AIConfig() {
       aiLogger.info(`加载完成: ${officials.length} 个官方 Provider, ${config.configured_providers.length} 个已配置`);
     } catch (e) {
       aiLogger.error('加载 AI 配置失败', e);
+      setAiConfig(null);
+      setTuziConfig(null);
       setError(String(e));
     } finally {
       setLoading(false);
@@ -1540,6 +1550,7 @@ export function AIConfig() {
   }, []);
 
   const normalProviders = aiConfig?.configured_providers.filter(provider => !QUICK_ACCESS_PROVIDER_NAMES.has(provider.name)) || [];
+  const invalidConfigError = !!error && error.includes('解析配置文件失败');
 
   useEffect(() => {
     loadData();
@@ -1553,6 +1564,25 @@ export function AIConfig() {
     } catch (e) {
       aiLogger.error('设置主模型失败', e);
       throw e;
+    }
+  };
+
+  const handleInitConfig = async () => {
+    setInitializingConfig(true);
+    setError(null);
+    try {
+      const result = await invoke<ConfigInitResult>('init_openclaw_config');
+      if (!result.success) {
+        setError(result.error || result.message);
+        return;
+      }
+      await loadData();
+    } catch (e) {
+      aiLogger.error('初始化配置失败', e);
+      setError(String(e));
+      setLoading(false);
+    } finally {
+      setInitializingConfig(false);
     }
   };
 
@@ -1572,14 +1602,39 @@ export function AIConfig() {
           <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4 text-red-300">
             <p className="font-medium mb-1">加载配置失败</p>
             <p className="text-sm text-red-400">{error}</p>
-            <button 
-              onClick={loadData}
-              className="mt-2 text-sm text-red-300 hover:text-white underline"
-            >
-              重试
-            </button>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              {invalidConfigError && (
+                <button
+                  onClick={handleInitConfig}
+                  disabled={initializingConfig}
+                  className="btn-secondary flex items-center gap-2"
+                >
+                  {initializingConfig ? <Loader2 size={16} className="animate-spin" /> : <Settings2 size={16} />}
+                  初始化配置
+                </button>
+              )}
+              <button
+                onClick={loadData}
+                disabled={initializingConfig}
+                className="text-sm text-red-300 hover:text-white underline disabled:opacity-50"
+              >
+                重试
+              </button>
+            </div>
           </div>
         )}
+
+        {invalidConfigError && !aiConfig ? (
+          <div className="bg-dark-700/50 rounded-xl p-4 border border-dark-500">
+            <h4 className="text-sm font-medium text-gray-400 mb-2">恢复建议</h4>
+            <ul className="text-sm text-gray-500 space-y-1">
+              <li>• 当前 `openclaw.json` 不是空文件，而是内容损坏，系统不会自动覆盖它。</li>
+              <li>• 你可以先点击“初始化配置”恢复到可编辑状态，再重新接入 Provider。</li>
+              <li>• 如果你想保留现场，也可以先手动备份 `~/.openclaw/openclaw.json`。</li>
+            </ul>
+          </div>
+        ) : (
+          <>
 
         {/* 概览卡片 */}
         <div className="bg-gradient-to-br from-dark-700 to-dark-800 rounded-2xl p-6 border border-dark-500">
@@ -1795,6 +1850,8 @@ export function AIConfig() {
             <li>• 修改配置后需要重启服务生效</li>
           </ul>
         </div>
+          </>
+        )}
       </div>
 
       {/* 添加/编辑 Provider 对话框 */}

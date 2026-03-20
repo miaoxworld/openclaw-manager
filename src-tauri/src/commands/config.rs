@@ -723,6 +723,10 @@ fn load_openclaw_config() -> Result<Value, String> {
 
     let content = file::read_file(&config_path).map_err(|e| format!("读取配置文件失败: {}", e))?;
 
+    if content.trim().is_empty() {
+        return Ok(json!({}));
+    }
+
     serde_json::from_str(&content).map_err(|e| format!("解析配置文件失败: {}", e))
 }
 
@@ -2277,6 +2281,53 @@ pub async fn install_feishu_plugin() -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::sync::{Mutex, MutexGuard, OnceLock};
+
+    fn home_env_lock() -> &'static Mutex<()> {
+        static HOME_ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        HOME_ENV_LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    struct HomeGuard {
+        _lock: MutexGuard<'static, ()>,
+        previous_home: Option<String>,
+        temp_home: PathBuf,
+    }
+
+    impl HomeGuard {
+        fn new() -> Self {
+            let lock = home_env_lock().lock().expect("lock home env");
+            let temp_home = std::env::temp_dir().join(format!(
+                "openclaw-manager-tests-{}",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .expect("valid time")
+                    .as_nanos()
+            ));
+            fs::create_dir_all(&temp_home).expect("create temp home");
+
+            let previous_home = std::env::var("HOME").ok();
+            std::env::set_var("HOME", &temp_home);
+
+            Self {
+                _lock: lock,
+                previous_home,
+                temp_home,
+            }
+        }
+    }
+
+    impl Drop for HomeGuard {
+        fn drop(&mut self) {
+            if let Some(home) = self.previous_home.take() {
+                std::env::set_var("HOME", home);
+            } else {
+                std::env::remove_var("HOME");
+            }
+            let _ = fs::remove_dir_all(&self.temp_home);
+        }
+    }
 
     #[test]
     fn parse_tuzi_models_payload_filters_empty_and_duplicates() {
@@ -2313,17 +2364,7 @@ mod tests {
 
     #[test]
     fn tuzi_model_cache_roundtrip_works() {
-        let temp_home = std::env::temp_dir().join(format!(
-            "openclaw-manager-tests-{}",
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .expect("valid time")
-                .as_nanos()
-        ));
-        std::fs::create_dir_all(&temp_home).expect("create temp home");
-
-        let previous_home = std::env::var("HOME").ok();
-        std::env::set_var("HOME", &temp_home);
+        let _home_guard = HomeGuard::new();
 
         let models = vec!["gpt-5.4".to_string(), "gpt-5.3-codex".to_string()];
         write_tuzi_model_cache(&TuziGroup::Codex, &models).expect("write cache");
@@ -2332,13 +2373,36 @@ mod tests {
 
         assert_eq!(cached_models, models);
         assert!(timestamp.is_some());
+    }
 
-        if let Some(home) = previous_home {
-            std::env::set_var("HOME", home);
-        } else {
-            std::env::remove_var("HOME");
-        }
-        let _ = std::fs::remove_dir_all(temp_home);
+    #[test]
+    fn load_openclaw_config_returns_empty_object_for_empty_file() {
+        let _home_guard = HomeGuard::new();
+        let config_path = platform::get_config_file_path();
+        let config_dir = PathBuf::from(&config_path)
+            .parent()
+            .expect("config dir")
+            .to_path_buf();
+        fs::create_dir_all(&config_dir).expect("create config dir");
+        fs::write(&config_path, "").expect("write empty config");
+
+        let config = load_openclaw_config().expect("empty config should load");
+        assert_eq!(config, json!({}));
+    }
+
+    #[test]
+    fn load_openclaw_config_keeps_invalid_non_empty_json_as_error() {
+        let _home_guard = HomeGuard::new();
+        let config_path = platform::get_config_file_path();
+        let config_dir = PathBuf::from(&config_path)
+            .parent()
+            .expect("config dir")
+            .to_path_buf();
+        fs::create_dir_all(&config_dir).expect("create config dir");
+        fs::write(&config_path, "{").expect("write invalid config");
+
+        let error = load_openclaw_config().expect_err("invalid config should fail");
+        assert!(error.contains("解析配置文件失败"));
     }
 
     #[test]
