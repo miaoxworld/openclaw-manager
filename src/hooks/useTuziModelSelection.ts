@@ -18,7 +18,36 @@ function dedupeModels(models: string[]): string[] {
 }
 
 function getConfiguredModels(tuziConfig: TuziConfigOverview | null, group: TuziGroup): string[] {
-  return tuziConfig?.groups.find((item) => item.group === group)?.models || [];
+  const models = tuziConfig?.groups.find((item) => item.group === group)?.models || [];
+  if (group !== 'gaccode') {
+    return models;
+  }
+  return dedupeModels(models.map((model) => model.includes('/') ? model.split('/').slice(1).join('/') : model));
+}
+
+const FIXED_GROUP_MODELS: Partial<Record<TuziGroup, string[]>> = {
+  gaccode: [
+    'claude-opus-4-6',
+    'claude-sonnet-4-6',
+    'claude-haiku-4-5-20251001',
+    'gpt-5.4',
+  ],
+};
+
+export function isFixedTuziGroup(group: TuziGroup): boolean {
+  return group in FIXED_GROUP_MODELS;
+}
+
+export function getFixedTuziModels(group: TuziGroup): string[] {
+  return FIXED_GROUP_MODELS[group]?.slice() || [];
+}
+
+function getInitialModels(group: TuziGroup, tuziConfig: TuziConfigOverview | null): string[] {
+  const configured = getConfiguredModels(tuziConfig, group);
+  if (configured.length > 0) {
+    return configured;
+  }
+  return getFixedTuziModels(group);
 }
 
 export function useTuziModelSelection(group: TuziGroup, tuziConfig: TuziConfigOverview | null) {
@@ -43,19 +72,21 @@ export function useTuziModelSelection(group: TuziGroup, tuziConfig: TuziConfigOv
     setModelsSource(null);
     setCacheTimestamp(null);
     setWarning(null);
-    setSelectedModels(getConfiguredModels(tuziConfig, group));
+    setSelectedModels(getInitialModels(group, tuziConfig));
   }, [group, tuziConfig]);
 
   const configuredModels = useMemo(() => getConfiguredModels(tuziConfig, group), [group, tuziConfig]);
+  const fixedModels = useMemo(() => getFixedTuziModels(group), [group]);
+  const fixedGroup = isFixedTuziGroup(group);
 
   const displayModels = useMemo<TuziDisplayModel[]>(() => {
-    const merged = dedupeModels([...availableModels, ...configuredModels, ...selectedModels]);
+    const merged = dedupeModels([...fixedModels, ...availableModels, ...configuredModels, ...selectedModels]);
     return merged.map((id) => ({
       id,
-      unavailable: availableModels.length > 0 && !availableModels.includes(id),
+      unavailable: !fixedGroup && availableModels.length > 0 && !availableModels.includes(id),
       selected: selectedModels.includes(id),
     }));
-  }, [availableModels, configuredModels, selectedModels]);
+  }, [availableModels, configuredModels, fixedGroup, fixedModels, selectedModels]);
 
   const toggleModel = (modelId: string) => {
     setSelectedModels((prev) =>
@@ -78,6 +109,21 @@ export function useTuziModelSelection(group: TuziGroup, tuziConfig: TuziConfigOv
   };
 
   const fetchModels = async () => {
+    if (fixedGroup) {
+      const fetched = dedupeModels(fixedModels);
+      setAvailableModels(fetched);
+      setSelectedModels((prev) => {
+        const normalizedPrev = dedupeModels(prev);
+        return normalizedPrev.length === 0 ? fetched : normalizedPrev;
+      });
+      setFetchError(null);
+      setManualEntryEnabled(false);
+      setModelsSource('api');
+      setCacheTimestamp(null);
+      setWarning(null);
+      return true;
+    }
+
     if (!apiKey.trim()) {
       setFetchError('请输入 Tuzi API Key');
       return false;
@@ -128,6 +174,7 @@ export function useTuziModelSelection(group: TuziGroup, tuziConfig: TuziConfigOv
     fetchingModels,
     fetchError,
     manualEntryEnabled,
+    fixedGroup,
     modelsSource,
     cacheTimestamp,
     warning,

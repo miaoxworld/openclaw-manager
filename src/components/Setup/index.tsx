@@ -16,7 +16,31 @@ import {
 import { api, EnvironmentStatus, TuziConfigOverview, TuziGroup } from '../../lib/tauri';
 import { setupLogger } from '../../lib/logger';
 import clsx from 'clsx';
-import { useTuziModelSelection } from '../../hooks/useTuziModelSelection';
+import { getFixedTuziModels, useTuziModelSelection } from '../../hooks/useTuziModelSelection';
+
+const QUICK_ACCESS_GROUPS: TuziGroup[] = ['claude-code', 'codex', 'gaccode'];
+
+function getGroupLabel(group: TuziGroup): string {
+  switch (group) {
+    case 'claude-code':
+      return 'Claude-Code';
+    case 'codex':
+      return 'Codex';
+    case 'gaccode':
+      return 'GACCode';
+  }
+}
+
+function getGroupProviderPrefixes(group: TuziGroup): string[] {
+  switch (group) {
+    case 'claude-code':
+      return ['tuzi-claude-code'];
+    case 'codex':
+      return ['tuzi-codex'];
+    case 'gaccode':
+      return ['gac-claude', 'gac-codex'];
+  }
+}
 
 interface InstallResult {
   success: boolean;
@@ -44,6 +68,7 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
   const [notice, setNotice] = useState<string | null>(null);
   const [mode, setMode] = useState<'tuzi' | 'other'>('tuzi');
   const [selectedGroup, setSelectedGroup] = useState<TuziGroup>('claude-code');
+  const fixedModels = getFixedTuziModels(selectedGroup);
   const {
     apiKey,
     setApiKey,
@@ -54,6 +79,7 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
     fetchingModels,
     fetchError,
     manualEntryEnabled,
+    fixedGroup,
     modelsSource,
     cacheTimestamp,
     warning,
@@ -143,9 +169,16 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
     try {
       await invoke<InstallResult>('init_openclaw_config');
       const currentPrimaryModel = aiSummary?.primary_model || null;
-      const targetProviderId = selectedGroup === 'claude-code' ? 'tuzi-claude-code' : 'tuzi-codex';
-      const targetModelId = `${targetProviderId}/${selectedModels[0]}`;
-      const sameGroupPrimary = !!currentPrimaryModel && currentPrimaryModel.startsWith(`${targetProviderId}/`);
+      const targetProviderId = selectedGroup === 'claude-code'
+        ? 'tuzi-claude-code'
+        : selectedGroup === 'codex'
+          ? 'tuzi-codex'
+          : 'gac-claude';
+      const targetModelId = fixedGroup
+        ? 'gac-claude/claude-opus-4-6'
+        : `${targetProviderId}/${selectedModels[0]}`;
+      const sameGroupPrimary = !!currentPrimaryModel
+        && getGroupProviderPrefixes(selectedGroup).some((prefix) => currentPrimaryModel.startsWith(`${prefix}/`));
       let shouldSwitchPrimary = !currentPrimaryModel || sameGroupPrimary;
 
       if (!shouldSwitchPrimary && currentPrimaryModel) {
@@ -158,7 +191,6 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
       if (shouldSwitchPrimary) {
         await api.setPrimaryModel(targetModelId);
       }
-      const nextGroup: TuziGroup = selectedGroup === 'claude-code' ? 'codex' : 'claude-code';
       const updatedTuzi = await api.getTuziConfig();
       const updatedEnv = await invoke<EnvironmentStatus>('check_environment');
       const updatedAiConfig = await api.getAIConfig();
@@ -167,16 +199,19 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
       setTuziConfig(updatedTuzi);
       setAiSummary({ primary_model: updatedAiConfig.primary_model });
 
-      const nextGroupConfig = updatedTuzi.groups.find((item) => item.group === nextGroup);
-      if (!nextGroupConfig?.configured) {
+      const nextGroup = QUICK_ACCESS_GROUPS.find((group) => {
+        const nextGroupConfig = updatedTuzi.groups.find((item) => item.group === group);
+        return !nextGroupConfig?.configured;
+      });
+      if (nextGroup) {
         setSelectedGroup(nextGroup);
         setNotice(
-          `已保存 ${selectedGroup === 'claude-code' ? 'Claude-Code' : 'Codex'}。你现在可以继续配置 ${nextGroup === 'claude-code' ? 'Claude-Code' : 'Codex'}，也可以直接完成后稍后再补。`
+          `已保存 ${getGroupLabel(selectedGroup)}。你现在可以继续配置 ${getGroupLabel(nextGroup)}，也可以直接完成后稍后再补。`
         );
         return;
       }
 
-      setNotice('Tuzi 双 Provider 已配置完成。');
+      setNotice('快速接入的分组已配置完成。');
       await onComplete();
     } catch (e) {
       setError(`保存 Tuzi 配置失败: ${String(e)}`);
@@ -301,7 +336,7 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
                   className={clsx('rounded-xl border p-4 text-left transition-colors', mode === 'tuzi' ? 'border-claw-500 bg-claw-500/10' : 'border-dark-500 bg-dark-600 hover:bg-dark-500')}
                 >
                   <p className="text-white font-medium">Tuzi API 快速接入</p>
-                  <p className="text-sm text-gray-400 mt-1">按 Tuzi 的 Claude-Code / Codex 双分组模型配置，适合最快接入。</p>
+                  <p className="text-sm text-gray-400 mt-1">支持 Tuzi 的 Claude-Code / Codex，以及 GACCode 的固定双 Provider 配置。</p>
                 </button>
                 <button
                   onClick={() => setMode('other')}
@@ -318,18 +353,18 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
                     <div>
                       <p className="text-white font-medium">Tuzi API</p>
                       <p className="text-sm text-gray-400">
-                        {aiSummary?.primary_model?.startsWith('tuzi-')
+                        {aiSummary?.primary_model && (aiSummary.primary_model.startsWith('tuzi-') || aiSummary.primary_model.startsWith('gac-'))
                           ? `当前正在使用 ${aiSummary.primary_model}`
-                          : 'Tuzi 已配置时，当前未使用 Tuzi'}
+                          : '快速接入已配置时，当前未使用 Tuzi / GACCode'}
                       </p>
                     </div>
                     <div className="text-right text-xs text-gray-500">
-                      已配置分组：{tuziConfig?.groups.filter((item) => item.configured).length || 0} / 2
+                      已配置分组：{tuziConfig?.groups.filter((item) => item.configured).length || 0} / 3
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    {(['claude-code', 'codex'] as TuziGroup[]).map((group) => {
+                  <div className="grid md:grid-cols-3 gap-3">
+                    {QUICK_ACCESS_GROUPS.map((group) => {
                       const config = tuziConfig?.groups.find((item) => item.group === group);
                       return (
                         <button
@@ -340,7 +375,7 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
                           }}
                           className={clsx('rounded-xl border p-4 text-left transition-colors', selectedGroup === group ? 'border-claw-500 bg-claw-500/10' : 'border-dark-500 bg-dark-600 hover:bg-dark-500')}
                         >
-                          <p className="text-white font-medium">{group === 'claude-code' ? 'Claude-Code' : 'Codex'}</p>
+                          <p className="text-white font-medium">{getGroupLabel(group)}</p>
                           <p className="text-xs text-gray-400 mt-1">
                             {config?.configured ? `已配置: ${config.primary_model}` : '未配置'}
                           </p>
@@ -356,38 +391,42 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
                       <input
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
-                        placeholder="输入对应分组的 Tuzi API Key"
+                        placeholder={selectedGroup === 'gaccode' ? '输入 GACCode API Key' : '输入对应分组的 Tuzi API Key'}
                         className="input-base pl-10"
                       />
                     </div>
-                    <div className="mt-3 flex items-center gap-3">
-                      <button
-                        onClick={fetchModels}
-                        disabled={fetchingModels}
-                        className="btn-secondary flex items-center gap-2"
-                      >
-                        {fetchingModels ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-                        获取可用模型
-                      </button>
-                      {modelsSource && (
-                        <p className="text-xs text-gray-500">
-                          当前来源：{modelsSource === 'api' ? '接口实时拉取' : `本地缓存${cacheTimestamp ? `（${cacheTimestamp}）` : ''}`}
-                        </p>
-                      )}
-                    </div>
+                    {!fixedGroup && (
+                      <div className="mt-3 flex items-center gap-3">
+                        <button
+                          onClick={fetchModels}
+                          disabled={fetchingModels}
+                          className="btn-secondary flex items-center gap-2"
+                        >
+                          {fetchingModels ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                          获取可用模型
+                        </button>
+                        {modelsSource && (
+                          <p className="text-xs text-gray-500">
+                            当前来源：{modelsSource === 'api' ? '接口实时拉取' : `本地缓存${cacheTimestamp ? `（${cacheTimestamp}）` : ''}`}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-sm text-gray-400 mb-2">
                       模型列表
-                      <span className="ml-2 text-xs text-gray-500">第一个模型将作为该分组主模型</span>
+                      <span className="ml-2 text-xs text-gray-500">
+                        {fixedGroup ? '固定模型由安装逻辑自动写入' : '第一个模型将作为该分组主模型'}
+                      </span>
                     </label>
-                    {warning && (
+                    {warning && !fixedGroup && (
                       <div className="mb-3 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-100">
                         实时拉取失败，已回退到本地缓存。{warning}
                       </div>
                     )}
-                    {fetchError && (
+                    {fetchError && !fixedGroup && (
                       <div className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
                         {fetchError}
                       </div>
@@ -404,7 +443,8 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
                           <input
                             type="checkbox"
                             checked={model.selected}
-                            onChange={() => toggleModel(model.id)}
+                            onChange={() => !fixedGroup && toggleModel(model.id)}
+                            disabled={fixedGroup}
                             className="w-4 h-4"
                           />
                           <div className="min-w-0">
@@ -418,12 +458,14 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
                     </div>
                     {displayModels.length === 0 && (
                       <div className="rounded-xl border border-dashed border-dark-500 bg-dark-600/50 px-4 py-6 text-sm text-gray-400">
-                        先输入 API Key 并获取模型列表。若接口和缓存都不可用，下面会开放手动输入。
+                        {fixedGroup
+                          ? '输入 API Key 后会按固定模型写入 GAC Claude 与 GAC Codex。'
+                          : '先输入 API Key 并获取模型列表。若接口和缓存都不可用，下面会开放手动输入。'}
                       </div>
                     )}
                   </div>
 
-                  {manualEntryEnabled && (
+                  {manualEntryEnabled && !fixedGroup && (
                     <div className="space-y-2">
                       <p className="text-sm text-yellow-100">当前无法获取模型列表，可手动补充模型名称作为兜底。</p>
                       <div className="flex gap-2">
@@ -442,13 +484,25 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
 
                   {selectedModels.length > 0 && (
                     <div className="rounded-xl bg-dark-600 p-3 text-sm text-gray-300">
-                      本次保存后该分组主模型：<span className="text-white font-medium">{selectedModels[0]}</span>
+                      本次保存后该分组主模型：
+                      <span className="text-white font-medium"> {fixedGroup ? 'gac-claude/claude-opus-4-6' : selectedModels[0]}</span>
                     </div>
                   )}
 
-                  {aiSummary?.primary_model && selectedModels.length > 0 && !aiSummary.primary_model.startsWith(`${selectedGroup === 'claude-code' ? 'tuzi-claude-code' : 'tuzi-codex'}/`) && (
+                  {fixedGroup && fixedModels.length > 0 && (
+                    <div className="rounded-xl border border-dark-500 bg-dark-600/60 p-4 text-sm text-gray-300">
+                      固定写入的模型：
+                      <div className="mt-2 space-y-1 text-xs text-gray-400">
+                        {fixedModels.map((model) => (
+                          <div key={model}>{model.startsWith('gpt-') ? `gac-codex/${model}` : `gac-claude/${model}`}</div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {aiSummary?.primary_model && selectedModels.length > 0 && !getGroupProviderPrefixes(selectedGroup).some((prefix) => aiSummary.primary_model?.startsWith(`${prefix}/`)) && (
                     <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-100">
-                      当前默认模型是 <span className="font-medium">{aiSummary.primary_model}</span>。保存该分组后会询问你是否切换到 <span className="font-medium">{selectedGroup === 'claude-code' ? 'tuzi-claude-code' : 'tuzi-codex'}/{selectedModels[0]}</span>。
+                      当前默认模型是 <span className="font-medium">{aiSummary.primary_model}</span>。保存该分组后会询问你是否切换到 <span className="font-medium">{`${getGroupProviderPrefixes(selectedGroup)[0]}/${fixedGroup ? 'claude-opus-4-6' : selectedModels[0]}`}</span>。
                     </div>
                   )}
 

@@ -317,6 +317,7 @@ pub struct EnvConfig {
 pub enum TuziGroup {
     ClaudeCode,
     Codex,
+    Gaccode,
 }
 
 impl TuziGroup {
@@ -324,6 +325,7 @@ impl TuziGroup {
         match self {
             Self::ClaudeCode => "claude-code",
             Self::Codex => "codex",
+            Self::Gaccode => "gaccode",
         }
     }
 }
@@ -334,6 +336,8 @@ pub struct TuziGroupConfig {
     pub group: TuziGroup,
     pub configured: bool,
     pub provider_id: String,
+    #[serde(default)]
+    pub provider_ids: Vec<String>,
     pub base_url: String,
     pub api_type: String,
     pub api_key_masked: Option<String>,

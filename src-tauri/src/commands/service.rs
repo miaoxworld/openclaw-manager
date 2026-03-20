@@ -2,7 +2,7 @@ use crate::models::ServiceStatus;
 use crate::utils::shell;
 use tauri::command;
 use std::process::Command;
-use log::{info, debug};
+use log::{info, debug, warn};
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -12,6 +12,16 @@ use std::os::windows::process::CommandExt;
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 const SERVICE_PORT: u16 = 18789;
+
+fn ensure_gateway_mode_local() -> Result<(), String> {
+    match shell::run_openclaw(&["config", "set", "gateway.mode", "local"]) {
+        Ok(_) => Ok(()),
+        Err(err) => {
+            warn!("[服务] 设置 gateway.mode=local 失败: {}", err);
+            Err(format!("初始化 gateway.mode=local 失败: {}", err))
+        }
+    }
+}
 
 /// 检测端口是否有服务在监听，返回 PID
 /// 简单直接：端口被占用 = 服务运行中
@@ -93,6 +103,9 @@ pub async fn start_service() -> Result<String, String> {
         return Err("找不到 openclaw 命令，请先通过 npm install -g openclaw 安装".to_string());
     }
     info!("[服务] openclaw 路径: {:?}", openclaw_path);
+
+    // 自愈式补齐 gateway.mode，避免被 openclaw 拒绝启动
+    ensure_gateway_mode_local()?;
     
     // 直接后台启动 gateway（不等待 doctor，避免阻塞）
     info!("[服务] 后台启动 gateway...");

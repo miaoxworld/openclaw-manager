@@ -108,12 +108,13 @@ export interface AIConfigOverview {
   available_models: string[];
 }
 
-export type TuziGroup = 'claude-code' | 'codex';
+export type TuziGroup = 'claude-code' | 'codex' | 'gaccode';
 
 export interface TuziGroupConfig {
   group: TuziGroup;
   configured: boolean;
   provider_id: string;
+  provider_ids: string[];
   base_url: string;
   api_type: string;
   api_key_masked: string | null;

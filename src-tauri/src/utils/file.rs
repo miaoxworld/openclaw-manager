@@ -20,12 +20,9 @@ pub fn write_file(path: &str, content: &str) -> io::Result<()> {
 pub fn append_file(path: &str, content: &str) -> io::Result<()> {
     use std::fs::OpenOptions;
     use std::io::Write;
-    
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)?;
-    
+
+    let mut file = OpenOptions::new().create(true).append(true).open(path)?;
+
     writeln!(file, "{}", content)
 }
 
@@ -39,7 +36,7 @@ pub fn read_last_lines(path: &str, n: usize) -> io::Result<Vec<String>> {
     let file = fs::File::open(path)?;
     let reader = BufReader::new(file);
     let lines: Vec<String> = reader.lines().filter_map(|l| l.ok()).collect();
-    
+
     let start = if lines.len() > n { lines.len() - n } else { 0 };
     Ok(lines[start..].to_vec())
 }
@@ -47,7 +44,7 @@ pub fn read_last_lines(path: &str, n: usize) -> io::Result<Vec<String>> {
 /// 从环境变量文件读取值
 pub fn read_env_value(env_file: &str, key: &str) -> Option<String> {
     let content = read_file(env_file).ok()?;
-    
+
     for line in content.lines() {
         let line = line.trim();
         if line.starts_with(&format!("export {}=", key)) {
@@ -88,7 +85,7 @@ pub fn read_env_value(env_file: &str, key: &str) -> Option<String> {
             return Some(unescaped);
         }
     }
-    
+
     None
 }
 
@@ -96,10 +93,10 @@ pub fn read_env_value(env_file: &str, key: &str) -> Option<String> {
 pub fn set_env_value(env_file: &str, key: &str, value: &str) -> io::Result<()> {
     let content = read_file(env_file).unwrap_or_default();
     let mut lines: Vec<String> = content.lines().map(|s| s.to_string()).collect();
-    
+
     let new_line = format!("export {}=\"{}\"", key, value);
     let mut found = false;
-    
+
     for line in &mut lines {
         if line.starts_with(&format!("export {}=", key)) {
             *line = new_line.clone();
@@ -107,11 +104,11 @@ pub fn set_env_value(env_file: &str, key: &str, value: &str) -> io::Result<()> {
             break;
         }
     }
-    
+
     if !found {
         lines.push(new_line);
     }
-    
+
     write_file(env_file, &lines.join("\n"))
 }
 
@@ -123,6 +120,6 @@ pub fn remove_env_value(env_file: &str, key: &str) -> io::Result<()> {
         .filter(|line| !line.starts_with(&format!("export {}=", key)))
         .map(|s| s.to_string())
         .collect();
-    
+
     write_file(env_file, &lines.join("\n"))
 }
