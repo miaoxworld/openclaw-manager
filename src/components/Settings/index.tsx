@@ -10,7 +10,9 @@ import {
   Trash2,
   AlertTriangle,
   X,
+  Sparkles,
 } from 'lucide-react';
+import { PageType } from '../../App';
 
 interface InstallResult {
   success: boolean;
@@ -20,9 +22,10 @@ interface InstallResult {
 
 interface SettingsProps {
   onEnvironmentChange?: () => void;
+  onNavigateToPage?: (page: PageType) => void;
 }
 
-export function Settings({ onEnvironmentChange }: SettingsProps) {
+export function Settings({ onEnvironmentChange, onNavigateToPage }: SettingsProps) {
   const [identity, setIdentity] = useState({
     botName: 'Clawd',
     userName: '主人',
@@ -203,6 +206,16 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
           </div>
 
           <div className="space-y-3">
+            <button
+              onClick={() => onNavigateToPage?.('skills')}
+              className="w-full flex items-center gap-3 p-4 bg-dark-600 rounded-lg hover:bg-dark-500 transition-colors text-left"
+            >
+              <Sparkles size={18} className="text-claw-400" />
+              <div className="flex-1">
+                <p className="text-sm text-white">打开 Skills 管理页</p>
+                <p className="text-xs text-gray-500">管理 tuzi-skills 官方技能集</p>
+              </div>
+            </button>
             <button
               onClick={openConfigDir}
               className="w-full flex items-center gap-3 p-4 bg-dark-600 rounded-lg hover:bg-dark-500 transition-colors text-left"

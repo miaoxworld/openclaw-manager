@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import {
   LayoutDashboard,
   Bot,
+  Sparkles,
   MessageSquare,
   FlaskConical,
   ScrollText,
@@ -25,6 +26,7 @@ interface SidebarProps {
 const menuItems: { id: PageType; label: string; icon: React.ElementType }[] = [
   { id: 'dashboard', label: '概览', icon: LayoutDashboard },
   { id: 'ai', label: 'AI 配置', icon: Bot },
+  { id: 'skills', label: 'Skills', icon: Sparkles },
   { id: 'channels', label: '消息渠道', icon: MessageSquare },
   { id: 'testing', label: '测试诊断', icon: FlaskConical },
   { id: 'logs', label: '应用日志', icon: ScrollText },
