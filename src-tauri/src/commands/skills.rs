@@ -338,12 +338,12 @@ async fn load_status_for_manifest(manifest: &TuziSkillsManifest) -> TuziSkillsSt
         };
     }
 
-    match shell::run_npx_skills(&["list", "-g", "--json"]).await {
+    match shell::run_npx_skills(&["list", "-g", "--agent", TUZI_SKILLS_AGENT, "--json"]).await {
         Ok(output) if output.success => {
             let installed = match serde_json::from_str::<Vec<InstalledSkillRaw>>(&output.stdout) {
                 Ok(items) => items
                     .into_iter()
-                    .map(|item| item.name)
+                    .map(|item| normalize_skill_name(item.name))
                     .collect::<HashSet<_>>(),
                 Err(e) => {
                     return TuziSkillsStatus {
@@ -625,6 +625,18 @@ mod tests {
 
         let filtered = collect_tuzi_installed_skills(&groups, &installed);
         assert_eq!(filtered, HashSet::from(["tuzi-xhs-images".to_string()]));
+    }
+
+    #[test]
+    fn normalize_skill_name_handles_installed_list_paths() {
+        assert_eq!(
+            normalize_skill_name("./skills/tuzi-image-gen/".to_string()),
+            "tuzi-image-gen"
+        );
+        assert_eq!(
+            normalize_skill_name("./tuzi-video-gen".to_string()),
+            "tuzi-video-gen"
+        );
     }
 
     #[test]

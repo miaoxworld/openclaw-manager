@@ -74,6 +74,42 @@ function resultDetails(result: TuziSkillInstallResult | null): string {
     .join('\n\n');
 }
 
+function applyInstalledSkills(
+  current: TuziSkillsStatus | null,
+  manifest: TuziSkillsManifest | null,
+  skills: string[],
+  action: 'install' | 'remove'
+): TuziSkillsStatus | null {
+  if (!current || !manifest) return current;
+
+  const skillSet = new Set(current.installed_skills);
+  for (const skill of skills) {
+    if (action === 'install') {
+      skillSet.add(skill);
+    } else {
+      skillSet.delete(skill);
+    }
+  }
+
+  const installedSkills = Array.from(skillSet).sort();
+  const groupStatus = manifest.plugins.map((group) => {
+    const installedCount = group.skills.filter((skill) => skillSet.has(skill)).length;
+    return {
+      group_name: group.name,
+      installed_count: installedCount,
+      total_count: group.skills.length,
+      fully_installed: installedCount === group.skills.length && group.skills.length > 0,
+    };
+  });
+
+  return {
+    ...current,
+    installed_skills: installedSkills,
+    group_status: groupStatus,
+    last_checked_at: new Date().toISOString(),
+  };
+}
+
 export function Skills({
   envStatus,
   onNavigateToSettings,
@@ -158,7 +194,11 @@ export function Skills({
     try {
       const result = await api.installAllTuziSkills();
       setOperationResult(result);
-      await loadData(true);
+      if (result.success && manifest) {
+        const allSkills = manifest.plugins.flatMap((group) => group.skills);
+        setStatus((current) => applyInstalledSkills(current, manifest, allSkills, 'install'));
+      }
+      void loadData(true);
     } catch (e) {
       setPageError(String(e));
     } finally {
@@ -183,7 +223,10 @@ export function Skills({
           ? await api.installTuziSkillsGroup(group.name)
           : await api.removeTuziSkillsGroup(group.name);
       setOperationResult(result);
-      await loadData(true);
+      if (result.success) {
+        setStatus((current) => applyInstalledSkills(current, manifest, group.skills, action));
+      }
+      void loadData(true);
     } catch (e) {
       setPageError(String(e));
     } finally {
