@@ -304,3 +304,135 @@ pub struct EnvConfig {
     pub key: String,
     pub value: String,
 }
+
+// ============ 技能库相关数据结构 ============
+
+/// 技能定义（返回给前端展示）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SkillDefinition {
+    /// 技能 ID（唯一标识）
+    pub id: String,
+    /// 显示名称
+    pub name: String,
+    /// 描述
+    pub description: String,
+    /// 图标（emoji）
+    pub icon: String,
+    /// 来源分类: "builtin" | "official" | "community" | "custom"
+    pub source: String,
+    /// 版本号
+    pub version: Option<String>,
+    /// 作者
+    pub author: Option<String>,
+    /// npm 包名（用于安装/卸载）
+    pub package_name: Option<String>,
+    /// ClawHub slug（用于 npx clawhub install）
+    pub clawhub_slug: Option<String>,
+    /// 是否已安装
+    pub installed: bool,
+    /// 是否已启用
+    pub enabled: bool,
+    /// 配置字段定义
+    pub config_fields: Vec<SkillConfigField>,
+    /// 当前配置值
+    pub config_values: std::collections::HashMap<String, serde_json::Value>,
+    /// 文档链接
+    pub docs_url: Option<String>,
+    /// 分类标签
+    pub category: Option<String>,
+}
+
+/// 技能配置字段定义
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SkillConfigField {
+    /// 字段 key
+    pub key: String,
+    /// 显示标签
+    pub label: String,
+    /// 字段类型: "text" | "password" | "select" | "toggle" | "number"
+    pub field_type: String,
+    /// 占位文本
+    pub placeholder: Option<String>,
+    /// 下拉选项（field_type = "select" 时使用）
+    pub options: Option<Vec<SkillSelectOption>>,
+    /// 是否必填
+    pub required: bool,
+    /// 默认值
+    pub default_value: Option<String>,
+    /// 帮助文本
+    pub help_text: Option<String>,
+}
+
+/// 技能下拉选项
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SkillSelectOption {
+    pub value: String,
+    pub label: String,
+}
+
+/// 技能保存请求
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SkillSaveRequest {
+    /// 技能 ID
+    pub skill_id: String,
+    /// 是否启用
+    pub enabled: bool,
+    /// 配置值
+    pub config: std::collections::HashMap<String, serde_json::Value>,
+}
+
+// ============ Agent 管理相关数据结构 ============
+
+/// Agent 配置（前端展示与编辑用）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentConfig {
+    /// Agent ID (唯一标识, 如 "main", "work", "assistant")
+    pub id: String,
+    /// 显示名称 (identity.name)
+    pub name: String,
+    /// Emoji 标识 (identity.emoji)
+    pub emoji: String,
+    /// 角色描述/人设 (identity.theme)
+    pub theme: Option<String>,
+    /// 独立工作空间路径
+    pub workspace: String,
+    /// Agent 目录 (agentDir, 存放 AGENTS.md, SOUL.md 等)
+    #[serde(rename = "agentDir")]
+    pub agent_dir: Option<String>,
+    /// 覆盖模型 (provider/model-id)
+    pub model: Option<String>,
+    /// 是否为默认 Agent
+    #[serde(rename = "isDefault")]
+    pub is_default: bool,
+    /// 沙箱模式: "off" | "non-main" | "all"
+    #[serde(rename = "sandboxMode")]
+    pub sandbox_mode: String,
+    /// 工具 profile: "coding" | "full" 等
+    #[serde(rename = "toolsProfile")]
+    pub tools_profile: Option<String>,
+    /// 允许的工具列表
+    #[serde(rename = "toolsAllow")]
+    pub tools_allow: Vec<String>,
+    /// 禁止的工具列表
+    #[serde(rename = "toolsDeny")]
+    pub tools_deny: Vec<String>,
+    /// 绑定的渠道
+    pub bindings: Vec<AgentBinding>,
+    /// 群聊提及模式
+    #[serde(rename = "mentionPatterns")]
+    pub mention_patterns: Vec<String>,
+    /// 子代理权限 (["*"] = 全部, 或指定 agent id)
+    #[serde(rename = "subagentAllow")]
+    pub subagent_allow: Vec<String>,
+}
+
+/// Agent 渠道绑定
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentBinding {
+    /// 渠道类型 (whatsapp, telegram, discord, etc.)
+    pub channel: String,
+    /// 账号 ID (可选, "*" = 任意)
+    #[serde(rename = "accountId")]
+    pub account_id: Option<String>,
+}
+

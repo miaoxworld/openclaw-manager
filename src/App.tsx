@@ -7,14 +7,18 @@ import { Header } from './components/Layout/Header';
 import { Dashboard } from './components/Dashboard';
 import { AIConfig } from './components/AIConfig';
 import { Channels } from './components/Channels';
+import { Skills } from './components/Skills';
+import { Agents } from './components/Agents';
 import { Settings } from './components/Settings';
+import { Security } from './components/Security';
 import { Testing } from './components/Testing';
 import { Logs } from './components/Logs';
 import { appLogger } from './lib/logger';
 import { isTauri } from './lib/tauri';
+import { ThemeProvider } from './lib/ThemeContext';
 import { Download, X, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
-export type PageType = 'dashboard' | 'ai' | 'channels' | 'testing' | 'logs' | 'settings';
+export type PageType = 'dashboard' | 'ai' | 'agents' | 'channels' | 'skills' | 'testing' | 'logs' | 'security' | 'settings';
 
 export interface EnvironmentStatus {
   node_installed: boolean;
@@ -170,9 +174,12 @@ function App() {
     const pages: Record<PageType, JSX.Element> = {
       dashboard: <Dashboard envStatus={envStatus} onSetupComplete={handleSetupComplete} />,
       ai: <AIConfig />,
+      agents: <Agents />,
       channels: <Channels />,
+      skills: <Skills />,
       testing: <Testing />,
       logs: <Logs />,
+      security: <Security />,
       settings: <Settings onEnvironmentChange={checkEnvironment} />,
     };
 
@@ -195,102 +202,112 @@ function App() {
 
   if (isReady === null) {
     return (
-      <div className="flex h-screen bg-dark-900 items-center justify-center">
-        <div className="fixed inset-0 bg-gradient-radial pointer-events-none" />
-        <div className="relative z-10 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-brand-500 to-purple-600 mb-4 animate-pulse">
-            <span className="text-3xl">🦞</span>
+      <ThemeProvider>
+        <div className="flex h-screen items-center justify-center" style={{ backgroundColor: 'var(--bg-app)' }}>
+          <div className="fixed inset-0 bg-gradient-radial pointer-events-none" />
+          <div className="relative z-10 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-claw-500 to-claw-700 mb-4 animate-pulse">
+              <span className="text-3xl">🦞</span>
+            </div>
+            <p style={{ color: 'var(--text-tertiary)' }}>正在启动...</p>
           </div>
-          <p className="text-dark-400">{t('app.starting')}</p>
         </div>
-      </div>
+      </ThemeProvider>
     );
   }
 
   return (
-    <div className="flex h-screen bg-dark-900 overflow-hidden">
-      <div className="fixed inset-0 bg-gradient-radial pointer-events-none" />
+    <ThemeProvider>
+      <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--bg-app)' }}>
+        {/* 背景装饰 */}
+        <div className="fixed inset-0 bg-gradient-radial pointer-events-none" />
 
-      <AnimatePresence>
-        {showUpdateBanner && updateInfo?.update_available && (
-          <motion.div
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -50 }}
-            className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-claw-600 to-purple-600 shadow-lg"
-          >
-            <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {updateResult?.success ? (
-                  <CheckCircle size={20} className="text-green-300" />
-                ) : updateResult && !updateResult.success ? (
-                  <AlertCircle size={20} className="text-red-300" />
-                ) : (
-                  <Download size={20} className="text-white" />
-                )}
-                <div>
-                  {updateResult ? (
-                    <p className={`text-sm font-medium ${updateResult.success ? 'text-green-100' : 'text-red-100'}`}>
-                      {updateResult.message}
-                    </p>
+        {/* 更新提示横幅 */}
+        <AnimatePresence>
+          {showUpdateBanner && updateInfo?.update_available && (
+            <motion.div
+              initial={{ opacity: 0, y: -50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -50 }}
+              className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-claw-600 to-purple-600 shadow-lg"
+            >
+              <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {updateResult?.success ? (
+                    <CheckCircle size={20} className="text-green-300" />
+                  ) : updateResult && !updateResult.success ? (
+                    <AlertCircle size={20} className="text-red-300" />
                   ) : (
-                    <>
-                      <p className="text-sm font-medium text-white">
-                        {t('app.newVersion', { version: updateInfo.latest_version })}
-                      </p>
-                      <p className="text-xs text-white/70">
-                        {t('app.currentVersion', { version: updateInfo.current_version })}
-                      </p>
-                    </>
+                    <Download size={20} className="text-white" />
                   )}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {!updateResult && (
-                  <button
-                    onClick={handleUpdate}
-                    disabled={updating}
-                    className="px-4 py-1.5 bg-white/20 hover:bg-white/30 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
-                  >
-                    {updating ? (
-                      <>
-                        <Loader2 size={14} className="animate-spin" />
-                        {t('app.updating')}
-                      </>
+                  <div>
+                    {updateResult ? (
+                      <p className={`text-sm font-medium ${updateResult.success ? 'text-green-100' : 'text-red-100'}`}>
+                        {updateResult.message}
+                      </p>
                     ) : (
                       <>
-                        <Download size={14} />
-                        {t('app.updateNow')}
+                        <p className="text-sm font-medium text-white">
+                          发现新版本 OpenClaw {updateInfo.latest_version}
+                        </p>
+                        <p className="text-xs text-white/70">
+                          当前版本: {updateInfo.current_version}
+                        </p>
                       </>
                     )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {!updateResult && (
+                    <button
+                      onClick={handleUpdate}
+                      disabled={updating}
+                      className="px-4 py-1.5 bg-white/20 hover:bg-white/30 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {updating ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" />
+                          更新中...
+                        </>
+                      ) : (
+                        <>
+                          <Download size={14} />
+                          立即更新
+                        </>
+                      )}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setShowUpdateBanner(false);
+                      setUpdateResult(null);
+                    }}
+                    className="p-1.5 hover:bg-white/20 rounded-lg transition-colors text-white/70 hover:text-white"
+                  >
+                    <X size={16} />
                   </button>
-                )}
-                <button
-                  onClick={() => {
-                    setShowUpdateBanner(false);
-                    setUpdateResult(null);
-                  }}
-                  className="p-1.5 hover:bg-white/20 rounded-lg transition-colors text-white/70 hover:text-white"
-                >
-                  <X size={16} />
-                </button>
+                </div>
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      <Sidebar currentPage={currentPage} onNavigate={handleNavigate} serviceStatus={serviceStatus} />
+        {/* 侧边栏 */}
+        <Sidebar currentPage={currentPage} onNavigate={handleNavigate} serviceStatus={serviceStatus} />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header currentPage={currentPage} />
+        {/* 主内容区 */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* 标题栏（macOS 拖拽区域） */}
+          <Header currentPage={currentPage} />
 
-        <main className="flex-1 overflow-hidden p-6">
-          {renderPage()}
-        </main>
+          {/* 页面内容 */}
+          <main className="flex-1 overflow-hidden p-6">
+            {renderPage()}
+          </main>
+        </div>
       </div>
-    </div>
+    </ThemeProvider>
   );
 }
 

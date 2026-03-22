@@ -28,9 +28,9 @@ export function StatusCard({ status, loading }: StatusCardProps) {
   };
 
   return (
-    <div className="bg-dark-700 rounded-2xl p-6 border border-dark-500">
+    <div className="bg-surface-card rounded-2xl p-6 border border-edge">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-white">{t('statusCard.serviceStatus')}</h3>
+        <h3 className="text-lg font-semibold text-content-primary">服务状态</h3>
         <div className="flex items-center gap-2">
           <div
             className={clsx(
@@ -54,42 +54,42 @@ export function StatusCard({ status, loading }: StatusCardProps) {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-dark-600 rounded-xl p-4">
+        <div className="bg-surface-elevated rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Activity size={16} className="text-accent-cyan" />
-            <span className="text-xs text-gray-400">{t('statusCard.port')}</span>
+            <span className="text-xs text-content-secondary">端口</span>
           </div>
-          <p className="text-xl font-semibold text-white">
+          <p className="text-xl font-semibold text-content-primary">
             {status?.port || 18789}
           </p>
         </div>
 
-        <div className="bg-dark-600 rounded-xl p-4">
+        <div className="bg-surface-elevated rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Cpu size={16} className="text-accent-purple" />
-            <span className="text-xs text-gray-400">{t('statusCard.processId')}</span>
+            <span className="text-xs text-content-secondary">进程 ID</span>
           </div>
-          <p className="text-xl font-semibold text-white">
+          <p className="text-xl font-semibold text-content-primary">
             {status?.pid || '--'}
           </p>
         </div>
 
-        <div className="bg-dark-600 rounded-xl p-4">
+        <div className="bg-surface-elevated rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <HardDrive size={16} className="text-accent-green" />
-            <span className="text-xs text-gray-400">{t('statusCard.memory')}</span>
+            <span className="text-xs text-content-secondary">内存</span>
           </div>
-          <p className="text-xl font-semibold text-white">
+          <p className="text-xl font-semibold text-content-primary">
             {status?.memory_mb ? `${status.memory_mb.toFixed(1)} MB` : '--'}
           </p>
         </div>
 
-        <div className="bg-dark-600 rounded-xl p-4">
+        <div className="bg-surface-elevated rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Clock size={16} className="text-accent-amber" />
-            <span className="text-xs text-gray-400">{t('statusCard.uptime')}</span>
+            <span className="text-xs text-content-secondary">运行时间</span>
           </div>
-          <p className="text-xl font-semibold text-white">
+          <p className="text-xl font-semibold text-content-primary">
             {formatUptime(status?.uptime_seconds || null)}
           </p>
         </div>

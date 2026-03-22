@@ -2,7 +2,72 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 基础样式 */
+/* ===== 主题变量 ===== */
+:root {
+  /* 背景 */
+  --bg-app: #f5f5f7;
+  --bg-sidebar: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f9f9fb;
+  --bg-input: #f0f0f3;
+  --bg-elevated: #e8e8ed;
+  --bg-overlay: rgba(255, 255, 255, 0.8);
+  --bg-code: #f4f4f6;
+
+  /* 文字 */
+  --text-primary: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-tertiary: #aeaeb2;
+  --text-inverse: #ffffff;
+
+  /* 边框 */
+  --border-primary: #d2d2d7;
+  --border-secondary: #e5e5ea;
+
+  /* 特殊 */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --scrollbar-track: #f0f0f3;
+  --scrollbar-thumb: #c7c7cc;
+  --scrollbar-thumb-hover: #a8a8ad;
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --selection-bg: rgba(249, 77, 58, 0.15);
+  --gradient-radial: rgba(249, 77, 58, 0.05);
+}
+
+.dark {
+  /* 背景 */
+  --bg-app: #0a0a0b;
+  --bg-sidebar: #111113;
+  --bg-card: #1a1a1d;
+  --bg-card-hover: #242428;
+  --bg-input: #1a1a1d;
+  --bg-elevated: #2e2e33;
+  --bg-overlay: rgba(26, 26, 29, 0.8);
+  --bg-code: #1a1a1d;
+
+  /* 文字 */
+  --text-primary: #e5e5e5;
+  --text-secondary: #9ca3af;
+  --text-tertiary: #6b7280;
+  --text-inverse: #1d1d1f;
+
+  /* 边框 */
+  --border-primary: #2e2e33;
+  --border-secondary: #242428;
+
+  /* 特殊 */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-card-hover: 0 8px 30px rgba(0, 0, 0, 0.3);
+  --scrollbar-track: #1a1a1d;
+  --scrollbar-thumb: #3d3d44;
+  --scrollbar-thumb-hover: #4d4d55;
+  --glass-bg: rgba(26, 26, 29, 0.8);
+  --selection-bg: rgba(249, 77, 58, 0.3);
+  --gradient-radial: rgba(249, 77, 58, 0.1);
+}
+
+/* ===== 基础样式 ===== */
 * {
   margin: 0;
   padding: 0;
@@ -16,10 +81,11 @@ html, body, #root {
 
 body {
   font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-  background-color: #0a0a0b;
-  color: #e5e5e5;
+  background-color: var(--bg-app);
+  color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* macOS 标题栏拖拽区域 */
@@ -33,8 +99,8 @@ body {
 
 /* 自定义选择样式 */
 ::selection {
-  background-color: rgba(249, 77, 58, 0.3);
-  color: white;
+  background-color: var(--selection-bg);
+  color: var(--text-primary);
 }
 
 /* 输入框焦点样式 */
@@ -97,8 +163,8 @@ button:disabled {
 /* 代码块样式 */
 .code-block {
   font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
-  background: #1a1a1d;
-  border: 1px solid #2e2e33;
+  background: var(--bg-code);
+  border: 1px solid var(--border-primary);
   border-radius: 8px;
   padding: 12px 16px;
   font-size: 13px;
@@ -113,12 +179,12 @@ button:disabled {
 
 .card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-card-hover);
 }
 
 /* 玻璃效果 */
 .glass {
-  background: rgba(26, 26, 29, 0.8);
+  background: var(--glass-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -155,22 +221,30 @@ button:disabled {
 
 /* 渐变背景 */
 .bg-gradient-radial {
-  background: radial-gradient(ellipse at top, rgba(249, 77, 58, 0.1) 0%, transparent 50%);
+  background: radial-gradient(ellipse at top, var(--gradient-radial) 0%, transparent 50%);
 }
 
 /* 图标按钮 */
 .icon-button {
   @apply p-2 rounded-lg transition-colors;
-  @apply hover:bg-dark-500 active:bg-dark-400;
+  background: transparent;
+}
+.icon-button:hover {
+  background: var(--bg-elevated);
 }
 
 /* 输入框通用样式 */
 .input-base {
-  @apply w-full px-4 py-3 rounded-lg;
-  @apply bg-dark-700 border border-dark-500;
-  @apply text-white placeholder-gray-500;
-  @apply focus:border-claw-500 focus:ring-1 focus:ring-claw-500/50;
-  @apply transition-all duration-200;
+  @apply w-full px-4 py-3 rounded-lg transition-all duration-200;
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+}
+.input-base::placeholder {
+  color: var(--text-tertiary);
+}
+.input-base:focus {
+  @apply border-claw-500 ring-1 ring-claw-500/50;
 }
 
 /* 按钮通用样式 */
@@ -183,14 +257,26 @@ button:disabled {
 }
 
 .btn-secondary {
-  @apply px-6 py-3 rounded-lg font-medium;
-  @apply bg-dark-600 text-white border border-dark-400;
-  @apply hover:bg-dark-500 active:bg-dark-400;
-  @apply transition-all duration-200;
+  @apply px-6 py-3 rounded-lg font-medium transition-all duration-200;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+}
+.btn-secondary:hover {
+  background: var(--bg-card-hover);
 }
 
 .btn-ghost {
-  @apply px-4 py-2 rounded-lg font-medium;
-  @apply text-gray-400 hover:text-white hover:bg-dark-600;
-  @apply transition-all duration-200;
+  @apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
+  color: var(--text-secondary);
+}
+.btn-ghost:hover {
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+}
+
+/* 主题过渡 */
+.theme-transition,
+.theme-transition * {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease !important;
 }

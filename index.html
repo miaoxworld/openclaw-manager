@@ -1,34 +1,54 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/claw.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>OpenClaw Manager</title>
-    <style>
-      /* 防止 FOUC */
-      html {
-        background-color: #0a0a0b;
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/claw.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>虾池子</title>
+  <script>
+    // 防止 FOUC - 在页面渲染前立即应用主题
+    (function () {
+      var theme = localStorage.getItem('openclaw-theme');
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
       }
-      /* 自定义滚动条 */
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #1a1a1d;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #3d3d44;
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #4d4d55;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+    })();
+  </script>
+  <style>
+    /* 防止 FOUC */
+    html {
+      background-color: #f5f5f7;
+    }
+
+    html.dark {
+      background-color: #0a0a0b;
+    }
+
+    /* 自定义滚动条 */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--scrollbar-track, #f0f0f3);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb, #c7c7cc);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--scrollbar-thumb-hover, #a8a8ad);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>

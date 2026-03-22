@@ -196,13 +196,13 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
                 <div className={`p-2 rounded-lg ${
                   envStatus.node_installed && envStatus.node_version_ok
                 <div className={`p-2 rounded-lg ${envStatus.node_installed && envStatus.node_version_ok
-                    ? 'bg-green-500/20 text-green-400'
-                    : 'bg-red-500/20 text-red-400'
+                  ? 'bg-green-500/20 text-green-400'
+                  : 'bg-red-500/20 text-red-400'
                   }`}>
                   <Cpu className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-white font-medium">Node.js</p>
+                  <p className="text-content-primary font-medium">Node.js</p>
                   <p className="text-sm text-dark-400">
                     {envStatus.node_version
                       ? `${envStatus.node_version} ${envStatus.node_version_ok ? '✓' : `(${t('setup.needsV22')})`}`
@@ -242,13 +242,13 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
                 <div className={`p-2 rounded-lg ${
                   envStatus.openclaw_installed
                 <div className={`p-2 rounded-lg ${envStatus.openclaw_installed
-                    ? 'bg-green-500/20 text-green-400'
-                    : 'bg-red-500/20 text-red-400'
+                  ? 'bg-green-500/20 text-green-400'
+                  : 'bg-red-500/20 text-red-400'
                   }`}>
                   <Package className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-white font-medium">OpenClaw</p>
+                  <p className="text-content-primary font-medium">OpenClaw</p>
                   <p className="text-sm text-dark-400">
                     {envStatus.openclaw_version || t('setup.notInstalled')}
                   </p>
@@ -343,7 +343,7 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
             >
               <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-3" />
             </motion.div>
-            <h3 className="text-lg font-bold text-white mb-1">{t('setup.envReady')}</h3>
+            <h3 className="text-lg font-bold text-content-primary mb-1">环境就绪！</h3>
             <p className="text-dark-400 text-sm">
               {t('setup.envReadyDesc')}
             </p>
@@ -362,8 +362,8 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
             <span className="text-2xl">⚠️</span>
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white mb-1">{t('setup.envSetup')}</h2>
-            <p className="text-dark-400 text-sm">{t('setup.missingDeps')}</p>
+            <h2 className="text-lg font-bold text-content-primary mb-1">环境配置</h2>
+            <p className="text-dark-400 text-sm">检测到缺少必要的依赖，请完成以下安装</p>
           </div>
         </div>
 
@@ -374,7 +374,7 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
 
   // 全屏模式（保留用于特殊情况）
   return (
-    <div className="min-h-screen bg-dark-900 flex items-center justify-center p-8">
+    <div className="min-h-screen bg-surface-app flex items-center justify-center p-8">
       {/* 背景装饰 */}
       <div className="fixed inset-0 bg-gradient-radial pointer-events-none" />
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -397,8 +397,8 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
           >
             <span className="text-4xl">🦞</span>
           </motion.div>
-          <h1 className="text-2xl font-bold text-white mb-2">OpenClaw Manager</h1>
-          <p className="text-dark-400">{t('setup.setupWizard')}</p>
+          <h1 className="text-2xl font-bold text-content-primary mb-2">虾池子</h1>
+          <p className="text-dark-400">环境检测与安装向导</p>
         </div>
 
         {/* 主卡片 */}
@@ -411,7 +411,7 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
 
         {/* 版本信息 */}
         <p className="text-center text-dark-500 text-xs mt-6">
-          OpenClaw Manager v0.0.7
+          虾池子 v0.0.10
         </p>
       </motion.div>
     </div>

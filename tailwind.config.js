@@ -4,6 +4,7 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
@@ -21,7 +22,28 @@ export default {
           900: '#84221c',
           950: '#480d09',
         },
-        // 深色主题背景
+        // 语义化颜色 - 引用 CSS 变量
+        surface: {
+          app: 'var(--bg-app)',
+          sidebar: 'var(--bg-sidebar)',
+          card: 'var(--bg-card)',
+          'card-hover': 'var(--bg-card-hover)',
+          input: 'var(--bg-input)',
+          elevated: 'var(--bg-elevated)',
+          overlay: 'var(--bg-overlay)',
+          code: 'var(--bg-code)',
+        },
+        content: {
+          primary: 'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
+          tertiary: 'var(--text-tertiary)',
+          inverse: 'var(--text-inverse)',
+        },
+        edge: {
+          DEFAULT: 'var(--border-primary)',
+          secondary: 'var(--border-secondary)',
+        },
+        // 深色主题背景（保留兼容）
         dark: {
           900: '#0a0a0b',
           800: '#111113',
@@ -86,6 +108,7 @@ export default {
         'glow-cyan': '0 0 30px rgba(34, 211, 238, 0.3)',
         'glow-green': '0 0 30px rgba(74, 222, 128, 0.3)',
         'inner-light': 'inset 0 1px 0 0 rgba(255, 255, 255, 0.05)',
+        'card': 'var(--shadow-card)',
       },
       backdropBlur: {
         xs: '2px',

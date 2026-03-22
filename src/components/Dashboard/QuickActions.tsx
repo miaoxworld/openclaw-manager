@@ -27,8 +27,8 @@ export function QuickActions({
   const isRunning = status?.running || false;
 
   return (
-    <div className="bg-dark-700 rounded-2xl p-6 border border-dark-500">
-      <h3 className="text-lg font-semibold text-white mb-4">{t('quickActions.title')}</h3>
+    <div className="bg-surface-card rounded-2xl p-6 border border-edge">
+      <h3 className="text-lg font-semibold text-content-primary mb-4">快捷操作</h3>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <button
@@ -36,27 +36,27 @@ export function QuickActions({
           disabled={loading || isRunning}
           className={clsx(
             'flex flex-col items-center gap-3 p-4 rounded-xl transition-all',
-            'border border-dark-500',
+            'border border-edge',
             isRunning
-              ? 'bg-dark-600 opacity-50 cursor-not-allowed'
-              : 'bg-dark-600 hover:bg-green-500/20 hover:border-green-500/50'
+              ? 'bg-surface-elevated opacity-50 cursor-not-allowed'
+              : 'bg-surface-elevated hover:bg-green-500/20 hover:border-green-500/50'
           )}
         >
           <div
             className={clsx(
               'w-12 h-12 rounded-full flex items-center justify-center',
-              isRunning ? 'bg-dark-500' : 'bg-green-500/20'
+              isRunning ? 'bg-surface-elevated' : 'bg-green-500/20'
             )}
           >
             <Play
               size={20}
-              className={isRunning ? 'text-gray-500' : 'text-green-400'}
+              className={isRunning ? 'text-content-tertiary' : 'text-green-400'}
             />
           </div>
           <span
             className={clsx(
               'text-sm font-medium',
-              isRunning ? 'text-gray-500' : 'text-gray-300'
+              isRunning ? 'text-content-tertiary' : 'text-content-secondary'
             )}
           >
             {t('quickActions.start')}
@@ -68,27 +68,27 @@ export function QuickActions({
           disabled={loading || !isRunning}
           className={clsx(
             'flex flex-col items-center gap-3 p-4 rounded-xl transition-all',
-            'border border-dark-500',
+            'border border-edge',
             !isRunning
-              ? 'bg-dark-600 opacity-50 cursor-not-allowed'
-              : 'bg-dark-600 hover:bg-red-500/20 hover:border-red-500/50'
+              ? 'bg-surface-elevated opacity-50 cursor-not-allowed'
+              : 'bg-surface-elevated hover:bg-red-500/20 hover:border-red-500/50'
           )}
         >
           <div
             className={clsx(
               'w-12 h-12 rounded-full flex items-center justify-center',
-              !isRunning ? 'bg-dark-500' : 'bg-red-500/20'
+              !isRunning ? 'bg-surface-elevated' : 'bg-red-500/20'
             )}
           >
             <Square
               size={20}
-              className={!isRunning ? 'text-gray-500' : 'text-red-400'}
+              className={!isRunning ? 'text-content-tertiary' : 'text-red-400'}
             />
           </div>
           <span
             className={clsx(
               'text-sm font-medium',
-              !isRunning ? 'text-gray-500' : 'text-gray-300'
+              !isRunning ? 'text-content-tertiary' : 'text-content-secondary'
             )}
           >
             {t('quickActions.stop')}
@@ -100,8 +100,8 @@ export function QuickActions({
           disabled={loading}
           className={clsx(
             'flex flex-col items-center gap-3 p-4 rounded-xl transition-all',
-            'border border-dark-500',
-            'bg-dark-600 hover:bg-amber-500/20 hover:border-amber-500/50'
+            'border border-edge',
+            'bg-surface-elevated hover:bg-amber-500/20 hover:border-amber-500/50'
           )}
         >
           <div className="w-12 h-12 rounded-full flex items-center justify-center bg-amber-500/20">
@@ -110,21 +110,21 @@ export function QuickActions({
               className={clsx('text-amber-400', loading && 'animate-spin')}
             />
           </div>
-          <span className="text-sm font-medium text-gray-300">{t('quickActions.restart')}</span>
+          <span className="text-sm font-medium text-content-secondary">重启</span>
         </button>
 
         <button
           disabled={loading}
           className={clsx(
             'flex flex-col items-center gap-3 p-4 rounded-xl transition-all',
-            'border border-dark-500',
-            'bg-dark-600 hover:bg-purple-500/20 hover:border-purple-500/50'
+            'border border-edge',
+            'bg-surface-elevated hover:bg-purple-500/20 hover:border-purple-500/50'
           )}
         >
           <div className="w-12 h-12 rounded-full flex items-center justify-center bg-purple-500/20">
             <Stethoscope size={20} className="text-purple-400" />
           </div>
-          <span className="text-sm font-medium text-gray-300">{t('quickActions.diagnose')}</span>
+          <span className="text-sm font-medium text-content-secondary">诊断</span>
         </button>
       </div>
     </div>

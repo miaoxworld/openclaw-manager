@@ -91,3 +91,39 @@ pub struct ChannelTestResult {
     /// 错误信息
     pub error: Option<String>,
 }
+
+/// 安全风险项
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SecurityIssue {
+    /// 唯一标识
+    pub id: String,
+    /// 标题
+    pub title: String,
+    /// 描述
+    pub description: String,
+    /// 严重级别: high, medium, low
+    pub severity: String,
+    /// 是否可自动修复
+    pub fixable: bool,
+    /// 是否已修复
+    pub fixed: bool,
+    /// 分类: network, exposure, skills, auth, permissions, service
+    pub category: String,
+    /// 详细说明
+    pub detail: Option<String>,
+}
+
+/// 安全修复结果
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SecurityFixResult {
+    /// 是否成功
+    pub success: bool,
+    /// 消息
+    pub message: String,
+    /// 已修复的项 ID
+    pub fixed_ids: Vec<String>,
+    /// 修复失败的项 ID
+    pub failed_ids: Vec<String>,
+    /// 手动修复说明
+    pub manual_instructions: Option<String>,
+}

@@ -1,6 +1,6 @@
 [package]
 name = "openclaw-manager"
-version = "0.0.7"
+version = "0.0.11"
 description = "OpenClaw 跨平台管理工具"
 authors = ["OpenClaw Team"]
 edition = "2021"

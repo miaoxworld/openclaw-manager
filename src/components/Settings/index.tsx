@@ -118,21 +118,21 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
         </div>
 
         {/* 身份配置 */}
-        <div className="bg-dark-700 rounded-2xl p-6 border border-dark-500">
+        <div className="bg-surface-card rounded-2xl p-6 border border-edge">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-claw-500/20 flex items-center justify-center">
               <User size={20} className="text-claw-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">{t('settings.identity')}</h3>
-              <p className="text-xs text-gray-500">{t('settings.identityDesc')}</p>
+              <h3 className="text-lg font-semibold text-content-primary">身份配置</h3>
+              <p className="text-xs text-content-tertiary">设置 AI 助手的名称和称呼</p>
             </div>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-2">
-                {t('settings.botName')}
+              <label className="block text-sm text-content-secondary mb-2">
+                AI 助手名称
               </label>
               <input
                 type="text"
@@ -146,8 +146,8 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">
-                {t('settings.yourName')}
+              <label className="block text-sm text-content-secondary mb-2">
+                你的称呼
               </label>
               <input
                 type="text"
@@ -161,7 +161,7 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">{t('settings.timezone')}</label>
+              <label className="block text-sm text-content-secondary mb-2">时区</label>
               <select
                 value={identity.timezone}
                 onChange={(e) =>
@@ -186,77 +186,77 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
         </div>
 
         {/* 安全设置 */}
-        <div className="bg-dark-700 rounded-2xl p-6 border border-dark-500">
+        <div className="bg-surface-card rounded-2xl p-6 border border-edge">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
               <Shield size={20} className="text-amber-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">{t('settings.security')}</h3>
-              <p className="text-xs text-gray-500">{t('settings.securityDesc')}</p>
+              <h3 className="text-lg font-semibold text-content-primary">安全设置</h3>
+              <p className="text-xs text-content-tertiary">权限和访问控制</p>
             </div>
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-dark-600 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-surface-elevated rounded-lg">
               <div>
-                <p className="text-sm text-white">{t('settings.enableWhitelist')}</p>
-                <p className="text-xs text-gray-500">{t('settings.whitelistDesc')}</p>
+                <p className="text-sm text-content-primary">启用白名单</p>
+                <p className="text-xs text-content-tertiary">只允许白名单用户访问</p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" className="sr-only peer" />
-                <div className="w-11 h-6 bg-dark-500 peer-focus:ring-2 peer-focus:ring-claw-500/50 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-claw-500"></div>
+                <div className="w-11 h-6 bg-surface-elevated peer-focus:ring-2 peer-focus:ring-claw-500/50 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-claw-500"></div>
               </label>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-dark-600 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-surface-elevated rounded-lg">
               <div>
-                <p className="text-sm text-white">{t('settings.fileAccess')}</p>
-                <p className="text-xs text-gray-500">{t('settings.fileAccessDesc')}</p>
+                <p className="text-sm text-content-primary">文件访问权限</p>
+                <p className="text-xs text-content-tertiary">允许 AI 读写本地文件</p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" className="sr-only peer" />
-                <div className="w-11 h-6 bg-dark-500 peer-focus:ring-2 peer-focus:ring-claw-500/50 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-claw-500"></div>
+                <div className="w-11 h-6 bg-surface-elevated peer-focus:ring-2 peer-focus:ring-claw-500/50 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-claw-500"></div>
               </label>
             </div>
           </div>
         </div>
 
         {/* 高级设置 */}
-        <div className="bg-dark-700 rounded-2xl p-6 border border-dark-500">
+        <div className="bg-surface-card rounded-2xl p-6 border border-edge">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
               <FileCode size={20} className="text-purple-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">{t('settings.advanced')}</h3>
-              <p className="text-xs text-gray-500">{t('settings.advancedDesc')}</p>
+              <h3 className="text-lg font-semibold text-content-primary">高级设置</h3>
+              <p className="text-xs text-content-tertiary">配置文件和目录</p>
             </div>
           </div>
 
           <div className="space-y-3">
             <button
               onClick={openConfigDir}
-              className="w-full flex items-center gap-3 p-4 bg-dark-600 rounded-lg hover:bg-dark-500 transition-colors text-left"
+              className="w-full flex items-center gap-3 p-4 bg-surface-elevated rounded-lg hover:bg-surface-elevated transition-colors text-left"
             >
-              <FolderOpen size={18} className="text-gray-400" />
+              <FolderOpen size={18} className="text-content-secondary" />
               <div className="flex-1">
-                <p className="text-sm text-white">{t('settings.openConfigDir')}</p>
-                <p className="text-xs text-gray-500">~/.openclaw</p>
+                <p className="text-sm text-content-primary">打开配置目录</p>
+                <p className="text-xs text-content-tertiary">~/.openclaw</p>
               </div>
             </button>
           </div>
         </div>
 
         {/* 危险操作 */}
-        <div className="bg-dark-700 rounded-2xl p-6 border border-red-900/30">
+        <div className="bg-surface-card rounded-2xl p-6 border border-red-900/30">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
               <AlertTriangle size={20} className="text-red-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">{t('settings.danger')}</h3>
-              <p className="text-xs text-gray-500">{t('settings.dangerDesc')}</p>
+              <h3 className="text-lg font-semibold text-content-primary">危险操作</h3>
+              <p className="text-xs text-content-tertiary">以下操作不可撤销，请谨慎操作</p>
             </div>
           </div>
 
@@ -277,20 +277,20 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
         {/* 卸载确认对话框 */}
         {showUninstallConfirm && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-dark-700 rounded-2xl p-6 border border-dark-500 max-w-md w-full mx-4 shadow-2xl">
+            <div className="bg-surface-card rounded-2xl p-6 border border-edge max-w-md w-full mx-4 shadow-2xl">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
                     <AlertTriangle size={20} className="text-red-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-white">{t('settings.confirmUninstall')}</h3>
+                  <h3 className="text-lg font-semibold text-content-primary">确认卸载</h3>
                 </div>
                 <button
                   onClick={() => {
                     setShowUninstallConfirm(false);
                     setUninstallResult(null);
                   }}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-content-secondary hover:text-content-primary transition-colors"
                 >
                   <X size={20} />
                 </button>
@@ -298,10 +298,10 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
 
               {!uninstallResult ? (
                 <>
-                  <p className="text-gray-300 mb-4">
-                    {t('settings.confirmUninstallMsg')}
+                  <p className="text-content-secondary mb-4">
+                    确定要卸载 OpenClaw 吗？此操作将：
                   </p>
-                  <ul className="text-sm text-gray-400 mb-6 space-y-2">
+                  <ul className="text-sm text-content-secondary mb-6 space-y-2">
                     <li className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 bg-red-400 rounded-full"></span>
                       {t('settings.uninstallAction1')}
@@ -319,14 +319,14 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
                   <div className="flex gap-3">
                     <button
                       onClick={() => setShowUninstallConfirm(false)}
-                      className="flex-1 px-4 py-2.5 bg-dark-600 hover:bg-dark-500 text-white rounded-lg transition-colors"
+                      className="flex-1 px-4 py-2.5 bg-surface-elevated hover:bg-surface-elevated text-content-primary rounded-lg transition-colors"
                     >
                       {t('settings.cancel')}
                     </button>
                     <button
                       onClick={handleUninstall}
                       disabled={uninstalling}
-                      className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-500 text-content-primary rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {uninstalling ? (
                         <>
@@ -353,8 +353,8 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
                     </p>
                   )}
                   {uninstallResult.success && (
-                    <p className="text-xs text-gray-400 mt-3">
-                      {t('settings.dialogAutoClose')}
+                    <p className="text-xs text-content-secondary mt-3">
+                      对话框将自动关闭...
                     </p>
                   )}
                 </div>

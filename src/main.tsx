@@ -8,7 +8,7 @@ import './lib/logger';
 import './i18n';
 
 console.log(
-  '%c🦞 OpenClaw Manager  启动',
+  '%c🦞 虾池子  启动',
   'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-size: 16px; padding: 8px 16px; border-radius: 4px; font-weight: bold;'
 );
 console.log(

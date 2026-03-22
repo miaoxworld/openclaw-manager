@@ -75,7 +75,7 @@ export function ServiceManager() {
     if (line.includes('info') || line.includes('Info') || line.includes('INFO')) {
       return 'text-green-400';
     }
-    return 'text-gray-400';
+    return 'text-content-secondary';
   };
 
   return (
@@ -138,19 +138,19 @@ export function ServiceManager() {
         <div className="flex-1" />
 
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-gray-400">
+          <label className="flex items-center gap-2 text-sm text-content-secondary">
             <input
               type="checkbox"
               checked={autoRefresh}
               onChange={(e) => setAutoRefresh(e.target.checked)}
-              className="w-4 h-4 rounded border-dark-500 bg-dark-600 text-claw-500 focus:ring-claw-500"
+              className="w-4 h-4 rounded border-edge bg-surface-elevated text-claw-500 focus:ring-claw-500"
             />
             自动刷新
           </label>
 
           <button
             onClick={fetchLogs}
-            className="icon-button text-gray-400 hover:text-white"
+            className="icon-button text-content-secondary hover:text-content-primary"
           >
             <RefreshCw size={16} />
           </button>
@@ -158,15 +158,15 @@ export function ServiceManager() {
       </div>
 
       {/* 日志查看器 */}
-      <div className="flex-1 bg-dark-800 rounded-xl border border-dark-600 overflow-hidden flex flex-col">
+      <div className="flex-1 bg-surface-sidebar rounded-xl border border-edge overflow-hidden flex flex-col">
         {/* 日志标题栏 */}
-        <div className="flex items-center gap-2 px-4 py-2 bg-dark-700 border-b border-dark-600">
-          <Terminal size={14} className="text-gray-500" />
-          <span className="text-xs text-gray-400 font-medium">
+        <div className="flex items-center gap-2 px-4 py-2 bg-surface-card border-b border-edge">
+          <Terminal size={14} className="text-content-tertiary" />
+          <span className="text-xs text-content-secondary font-medium">
             /tmp/openclaw-gateway.log
           </span>
           <div className="flex-1" />
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-content-tertiary">
             {logs.length} 行
           </span>
         </div>
@@ -174,7 +174,7 @@ export function ServiceManager() {
         {/* 日志内容 */}
         <div className="flex-1 overflow-y-auto p-4 font-mono text-xs leading-relaxed">
           {logs.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-gray-500">
+            <div className="h-full flex items-center justify-center text-content-tertiary">
               <div className="text-center">
                 <FileText size={32} className="mx-auto mb-2 opacity-50" />
                 <p>暂无日志</p>
