@@ -12,7 +12,7 @@ import {
   X,
   Sparkles,
 } from 'lucide-react';
-import { PageType } from '../../App';
+import { OpenclawSubPageType } from '../../App';
 
 interface InstallResult {
   success: boolean;
@@ -22,7 +22,7 @@ interface InstallResult {
 
 interface SettingsProps {
   onEnvironmentChange?: () => void;
-  onNavigateToPage?: (page: PageType) => void;
+  onNavigateToPage?: (page: OpenclawSubPageType) => void;
 }
 
 export function Settings({ onEnvironmentChange, onNavigateToPage }: SettingsProps) {

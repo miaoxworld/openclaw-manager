@@ -1,3 +1,5 @@
+pub mod claudecode;
+pub mod codex;
 pub mod config;
 pub mod diagnostics;
 pub mod installer;

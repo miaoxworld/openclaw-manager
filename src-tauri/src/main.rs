@@ -8,7 +8,7 @@ mod commands;
 mod models;
 mod utils;
 
-use commands::{config, diagnostics, installer, process, service, skills};
+use commands::{claudecode, codex, config, diagnostics, installer, process, service, skills};
 
 fn main() {
     // 初始化日志 - 默认显示 info 级别日志
@@ -35,6 +35,7 @@ fn main() {
             // 进程管理
             process::check_openclaw_installed,
             process::get_openclaw_version,
+            process::get_module_statuses,
             process::check_port_in_use,
             // 配置管理
             config::get_config,
@@ -88,6 +89,26 @@ fn main() {
             skills::remove_tuzi_skills_group,
             skills::check_tuzi_skills_requirements,
             skills::refresh_tuzi_skills,
+            // ClaudeCode 管理
+            claudecode::get_claudecode_status,
+            claudecode::get_claude_install_reference,
+            claudecode::install_claudecode,
+            claudecode::upgrade_claudecode,
+            claudecode::uninstall_claudecode,
+            claudecode::list_claude_routes,
+            claudecode::switch_claude_route,
+            claudecode::add_claude_route,
+            claudecode::update_claude_route_key,
+            // Codex 管理
+            codex::get_codex_status,
+            codex::get_codex_install_reference,
+            codex::install_codex,
+            codex::upgrade_codex,
+            codex::uninstall_codex,
+            codex::reinstall_codex,
+            codex::list_codex_routes,
+            codex::switch_codex_route,
+            codex::set_codex_route_model,
         ])
         .run(tauri::generate_context!())
         .expect("运行 Tauri 应用时发生错误");

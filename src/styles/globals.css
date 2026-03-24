@@ -194,3 +194,103 @@ button:disabled {
   @apply text-gray-400 hover:text-white hover:bg-dark-600;
   @apply transition-all duration-200;
 }
+
+/* 安装页统一样式 */
+.install-card {
+  @apply p-4 rounded-xl bg-dark-600 border border-dark-500 text-left text-sm text-gray-200;
+}
+
+.install-action-btn {
+  @apply px-3 py-1.5 rounded-full text-xs font-semibold;
+  @apply bg-claw-500/20 text-claw-200 border border-claw-400/40;
+  @apply transition-all;
+}
+
+.group:hover .install-action-btn {
+  @apply bg-claw-500/30 border-claw-300/60 text-white;
+}
+
+.segmented-control {
+  @apply inline-flex rounded-lg border border-dark-500 bg-dark-700 p-1;
+}
+
+.segmented-item {
+  @apply px-3 py-1.5 rounded-md text-xs font-medium transition-colors;
+  @apply text-gray-300 hover:text-white hover:bg-dark-500;
+}
+
+.segmented-item.active {
+  @apply bg-claw-500/20 text-claw-100 border border-claw-400/40;
+}
+
+/* FAQ 页统一样式 */
+.faq-search-wrap {
+  @apply flex items-center gap-2 rounded-lg border border-dark-500 bg-dark-800 px-3 py-2;
+}
+
+.faq-search-input {
+  @apply w-full bg-transparent text-sm text-gray-100 placeholder-gray-500;
+}
+
+.faq-chip-row {
+  @apply flex gap-2 overflow-x-auto pb-1;
+}
+
+.faq-category-chip {
+  @apply inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-dark-500 bg-dark-700 px-3 py-1 text-xs text-gray-300 transition-colors;
+  @apply hover:bg-dark-600 hover:text-white;
+}
+
+.faq-category-chip.has-items {
+  @apply border-claw-500/30 text-gray-100;
+}
+
+.faq-chip-count {
+  @apply rounded-full bg-dark-800 px-2 py-0.5 text-[11px] text-gray-400;
+}
+
+.faq-section-card {
+  @apply rounded-2xl border border-dark-500 bg-dark-700 p-4;
+}
+
+.faq-section-header {
+  @apply w-full flex items-center justify-between text-left;
+}
+
+.faq-item-card {
+  @apply rounded-xl border border-dark-500 bg-dark-800 p-4;
+}
+
+.faq-warning-chip {
+  @apply inline-flex items-center gap-1 rounded-full border border-yellow-500/40 bg-yellow-500/15 px-2 py-0.5 text-[11px] text-yellow-300;
+}
+
+.faq-command-block {
+  @apply rounded-lg border border-dark-500 bg-dark-900 p-3;
+}
+
+.faq-command-pre {
+  @apply whitespace-pre-wrap break-all rounded-md bg-black/40 px-3 py-2 text-xs text-gray-200;
+}
+
+.faq-copy-btn {
+  @apply inline-flex items-center gap-1 rounded-md border border-dark-400 bg-dark-700 px-2 py-1 text-[11px] text-gray-300;
+  @apply hover:bg-dark-600 hover:text-white transition-colors;
+}
+
+.faq-action-btn {
+  @apply inline-flex items-center gap-1 rounded-full border border-claw-500/40 bg-claw-500/15 px-3 py-1 text-xs text-claw-200;
+  @apply hover:bg-claw-500/25 hover:text-white transition-colors;
+}
+
+.faq-raw-docs {
+  @apply rounded-2xl border border-dark-500 bg-dark-700 p-4 text-sm text-gray-300;
+}
+
+.faq-raw-docs summary {
+  @apply cursor-pointer select-none text-sm text-gray-200;
+}
+
+.faq-raw-pre {
+  @apply max-h-[420px] overflow-y-auto whitespace-pre-wrap rounded-lg border border-dark-500 bg-dark-900 p-4 text-xs text-gray-300;
+}

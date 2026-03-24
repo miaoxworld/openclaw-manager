@@ -105,7 +105,7 @@ pub async fn check_environment() -> Result<EnvironmentStatus, String> {
         tuzi_configured
     };
 
-    let ready = node_installed && node_version_ok && openclaw_installed;
+    let ready = node_installed && node_version_ok;
     info!("[环境检查] 环境就绪状态: ready={}", ready);
 
     Ok(EnvironmentStatus {

@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { apiLogger } from './logger';
+import { ModuleType } from '../types/modules';
 
 // 检查是否在 Tauri 环境中运行
 export function isTauri(): boolean {
@@ -196,6 +197,117 @@ export interface EnvironmentStatus {
   os: string;
 }
 
+export interface ModuleStatus {
+  module_id: ModuleType;
+  installed: boolean;
+  version: string | null;
+  message: string;
+}
+
+export interface ModuleStatusOverview {
+  node_installed: boolean;
+  node_version: string | null;
+  modules: ModuleStatus[];
+}
+
+export type ClaudeInstallScheme = 'A' | 'B' | 'C';
+
+export interface ClaudeRoute {
+  name: string;
+  base_url: string | null;
+  has_key: boolean;
+  is_current: boolean;
+  api_key_masked: string | null;
+}
+
+export interface ClaudeEnvSummary {
+  anthropic_api_key_masked: string | null;
+  anthropic_base_url: string | null;
+  anthropic_api_token_set: boolean;
+}
+
+export interface ClaudeCodeStatus {
+  installed: boolean;
+  version: string | null;
+  current_route: string | null;
+  route_file_exists: boolean;
+  routes: ClaudeRoute[];
+  env_summary: ClaudeEnvSummary;
+}
+
+export interface ClaudeReferenceDocs {
+  readme_markdown: string;
+  flow_markdown: string;
+  updated_at: string | null;
+  error: string | null;
+}
+
+export interface ClaudeActionResult {
+  success: boolean;
+  message: string;
+  error: string | null;
+  stdout: string;
+  stderr: string;
+  restart_required: boolean;
+}
+
+export interface ClaudeRoutesResponse {
+  current_route: string | null;
+  routes: ClaudeRoute[];
+}
+
+export type CodexInstallVariant = 'openai' | 'gac';
+export type CodexInstallType = 'openai' | 'gac' | 'unknown';
+
+export interface CodexModelSettings {
+  model: string;
+  model_reasoning_effort: string;
+}
+
+export interface CodexRoute {
+  name: string;
+  base_url: string | null;
+  has_key: boolean;
+  is_current: boolean;
+  api_key_masked: string | null;
+  model_settings: CodexModelSettings;
+}
+
+export interface CodexEnvSummary {
+  codex_api_key_masked: string | null;
+}
+
+export interface CodexStatus {
+  installed: boolean;
+  version: string | null;
+  install_type: CodexInstallType | null;
+  current_route: string | null;
+  state_file_exists: boolean;
+  config_file_exists: boolean;
+  routes: CodexRoute[];
+  env_summary: CodexEnvSummary;
+}
+
+export interface CodexReferenceDocs {
+  script_markdown: string;
+  updated_at: string | null;
+  error: string | null;
+}
+
+export interface CodexActionResult {
+  success: boolean;
+  message: string;
+  error: string | null;
+  stdout: string;
+  stderr: string;
+  restart_required: boolean;
+}
+
+export interface CodexRoutesResponse {
+  current_route: string | null;
+  routes: CodexRoute[];
+}
+
 export interface TuziSkillsPluginGroup {
   name: string;
   description: string;
@@ -262,6 +374,82 @@ export const api = {
   getSystemInfo: () => invokeWithLog<SystemInfo>('get_system_info'),
   checkOpenclawInstalled: () => invokeWithLog<boolean>('check_openclaw_installed'),
   getOpenclawVersion: () => invokeWithLog<string | null>('get_openclaw_version'),
+  getModuleStatuses: () => invokeWithLog<ModuleStatusOverview>('get_module_statuses'),
+  getClaudeCodeStatus: () => invokeWithLog<ClaudeCodeStatus>('get_claudecode_status'),
+  getClaudeInstallReference: () => invokeWithLog<ClaudeReferenceDocs>('get_claude_install_reference'),
+  installClaudeCode: (scheme: ClaudeInstallScheme, apiKey?: string) =>
+    invokeWithLog<ClaudeActionResult>('install_claudecode', { scheme, apiKey }),
+  upgradeClaudeCode: (targetVariant?: string) =>
+    invokeWithLog<ClaudeActionResult>('upgrade_claudecode', { targetVariant }),
+  uninstallClaudeCode: (clearConfig: boolean) =>
+    invokeWithLog<ClaudeActionResult>('uninstall_claudecode', { clearConfig }),
+  listClaudeRoutes: () => invokeWithLog<ClaudeRoutesResponse>('list_claude_routes'),
+  switchClaudeRoute: (routeName: string) =>
+    invokeWithLog<ClaudeActionResult>('switch_claude_route', { routeName }),
+  addClaudeRoute: (routeName: string, baseUrl: string, apiKey: string) =>
+    invokeWithLog<ClaudeActionResult>('add_claude_route', { routeName, baseUrl, apiKey }),
+  updateClaudeRouteKey: (routeName: string, apiKey: string) =>
+    invokeWithLog<ClaudeActionResult>('update_claude_route_key', { routeName, apiKey }),
+  getCodexStatus: () => invokeWithLog<CodexStatus>('get_codex_status'),
+  getCodexInstallReference: () =>
+    invokeWithLog<CodexReferenceDocs>('get_codex_install_reference'),
+  installCodex: (
+    variant: CodexInstallVariant,
+    route?: string,
+    apiKey?: string,
+    model?: string,
+    modelReasoningEffort?: string
+  ) =>
+    invokeWithLog<CodexActionResult>('install_codex', {
+      variant,
+      route,
+      api_key: apiKey,
+      model,
+      model_reasoning_effort: modelReasoningEffort,
+    }),
+  upgradeCodex: (targetVariant?: CodexInstallVariant) =>
+    invokeWithLog<CodexActionResult>('upgrade_codex', { target_variant: targetVariant }),
+  uninstallCodex: (clearConfig: boolean) =>
+    invokeWithLog<CodexActionResult>('uninstall_codex', { clear_config: clearConfig }),
+  reinstallCodex: (
+    variant: CodexInstallVariant,
+    route?: string,
+    apiKey?: string,
+    model?: string,
+    modelReasoningEffort?: string,
+    clearConfig?: boolean
+  ) =>
+    invokeWithLog<CodexActionResult>('reinstall_codex', {
+      variant,
+      route,
+      api_key: apiKey,
+      model,
+      model_reasoning_effort: modelReasoningEffort,
+      clear_config: clearConfig,
+    }),
+  listCodexRoutes: () => invokeWithLog<CodexRoutesResponse>('list_codex_routes'),
+  switchCodexRoute: (
+    routeName: string,
+    apiKey: string,
+    model?: string,
+    modelReasoningEffort?: string
+  ) =>
+    invokeWithLog<CodexActionResult>('switch_codex_route', {
+      route_name: routeName,
+      api_key: apiKey,
+      model,
+      model_reasoning_effort: modelReasoningEffort,
+    }),
+  setCodexRouteModel: (
+    routeName: string,
+    model: string,
+    modelReasoningEffort?: string
+  ) =>
+    invokeWithLog<CodexActionResult>('set_codex_route_model', {
+      route_name: routeName,
+      model,
+      model_reasoning_effort: modelReasoningEffort,
+    }),
 
   // 配置管理
   getConfig: () => invokeWithLog<unknown>('get_config'),

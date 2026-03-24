@@ -220,7 +220,7 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
     }
   };
 
-  const envReady = !!envStatus?.ready;
+  const envReady = !!envStatus?.node_installed && !!envStatus?.node_version_ok && !!envStatus?.openclaw_installed;
   const aiConfigured = !!envStatus?.ai_configured;
 
   if (checking) {

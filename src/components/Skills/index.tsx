@@ -319,7 +319,7 @@ export function Skills({
                       onClick={onNavigateToSetup}
                       className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm transition-colors"
                     >
-                      去快速开始
+                      去模块中心
                     </button>
                   )}
                   <button

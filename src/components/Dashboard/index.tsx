@@ -4,17 +4,16 @@ import { invoke } from '@tauri-apps/api/core';
 import { StatusCard } from './StatusCard';
 import { QuickActions } from './QuickActions';
 import { SystemInfo } from './SystemInfo';
-import { Setup } from '../Setup';
 import { api, EnvironmentStatus, ServiceStatus, isTauri } from '../../lib/tauri';
 import { Terminal, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import clsx from 'clsx';
 
 interface DashboardProps {
   envStatus: EnvironmentStatus | null;
-  onSetupComplete: () => void;
+  onNavigateToModules: () => void;
 }
 
-export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
+export function Dashboard({ envStatus, onNavigateToModules }: DashboardProps) {
   const [status, setStatus] = useState<ServiceStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -148,9 +147,6 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
     show: { opacity: 1, y: 0 },
   };
 
-  // 检查环境是否就绪
-  const needsSetup = envStatus && (!envStatus.ready || !envStatus.ai_configured);
-
   return (
     <div className="h-full overflow-y-auto scroll-container pr-2">
       <motion.div
@@ -159,12 +155,44 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
         animate="show"
         className="space-y-6"
       >
-        {/* 环境安装向导（仅在需要时显示） */}
-        {needsSetup && (
-          <motion.div variants={itemVariants}>
-            <Setup onComplete={onSetupComplete} embedded />
-          </motion.div>
-        )}
+        <motion.div variants={itemVariants}>
+          <div className="bg-dark-700 rounded-2xl p-6 border border-dark-500">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-white">模块状态总览</h3>
+                <p className="text-sm text-gray-400 mt-1">
+                  安装配置入口已升级为模块中心，OpenClaw/Codex/Claude Code 独立管理。
+                </p>
+                <div className="mt-3 flex flex-wrap gap-3 text-xs">
+                  <span className={clsx(
+                    'px-3 py-1 rounded-full',
+                    envStatus?.node_installed && envStatus.node_version_ok
+                      ? 'bg-green-500/15 text-green-300'
+                      : 'bg-red-500/15 text-red-300'
+                  )}>
+                    Node.js: {envStatus?.node_version || '未安装'}
+                  </span>
+                  <span className={clsx(
+                    'px-3 py-1 rounded-full',
+                    envStatus?.openclaw_installed
+                      ? 'bg-green-500/15 text-green-300'
+                      : 'bg-yellow-500/15 text-yellow-300'
+                  )}>
+                    OpenClaw: {envStatus?.openclaw_installed ? (envStatus.openclaw_version || '已安装') : '未安装'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={onNavigateToModules}
+                  className="px-4 py-2 rounded-lg bg-dark-600 hover:bg-dark-500 text-sm text-gray-200 transition-colors"
+                >
+                  打开模块中心
+                </button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
 
         {/* 服务状态卡片 */}
         <motion.div variants={itemVariants}>
