@@ -25,11 +25,43 @@ AI Manager 是一款跨平台桌面控制台，面向使用 OpenClaw CLI 与 Tuz
 
 ## ⚡ 快速开始
 
-1. 从 [Releases](https://github.com/tuziapi/openclaw-manager/releases/) 下载适合你平台的安装包
+1. 从 [Releases](https://github.com/tuziapi/openclaw-manager/releases/) 下载适合你平台的安装包，或使用下方 **一键安装脚本**（macOS / Linux x86_64）
 2. 打开应用后，优先在 **AI 配置** 中接入 Tuzi API 或其他 Provider
 3. 根据需要继续配置消息渠道，并在仪表盘中完成启动、重启和诊断
 
 > 如果你是第一次使用，建议先完成 **AI 配置 → 渠道配置 → 服务测试** 这条路径，再进入日常使用。
+
+### 一键安装脚本（最新 Release）
+
+在终端执行（需已安装 `curl`、`python3`；Linux 安装 `.deb` 时会提示使用 `sudo`）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/tuziapi/openclaw-manager/main/scripts/install_ai_manager.sh | bash
+```
+
+仅预览将下载的安装包与步骤、不写入系统：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/tuziapi/openclaw-manager/main/scripts/install_ai_manager.sh | bash -s -- --dry-run
+```
+
+克隆仓库后也可本地执行：
+
+```bash
+./scripts/install_ai_manager.sh              # 安装并（在 macOS 上）打开应用
+./scripts/install_ai_manager.sh --no-open    # 安装后不自动打开
+./scripts/install_ai_manager.sh --tag v0.0.15   # 安装指定已发布版本
+```
+
+常用环境变量（与命令行选项可同时使用，选项优先）：
+
+| 变量 | 说明 |
+|------|------|
+| `AI_MANAGER_TAG` | 指定版本标签，如 `v0.0.15` |
+| `AI_MANAGER_GITHUB_REPO` | 默认 `tuziapi/openclaw-manager`（与 GitHub 仓库重定向一致） |
+| `GITHUB_TOKEN` | 可选；降低访问 `api.github.com` 时的未认证速率限制风险 |
+
+**说明**：脚本从 GitHub **已发布** 的 Release 解析资源；若最新 Release 仍为 **草稿**，请先发布后再运行。Windows 请直接在 Releases 中下载 `.msi` 或 `.exe`。Linux 默认优先安装 `amd64` 的 `.deb`；若需 AppImage，可加 `--appimage`。
 
 ## 📸 界面预览
 
