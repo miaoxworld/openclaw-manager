@@ -11,8 +11,6 @@ use std::os::windows::process::CommandExt;
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
-const SERVICE_PORT: u16 = 18789;
-
 /// 检测端口是否有服务在监听，返回 PID
 /// 简单直接：端口被占用 = 服务运行中
 fn check_port_listening(port: u16) -> Option<u32> {
@@ -60,14 +58,15 @@ fn check_port_listening(port: u16) -> Option<u32> {
 /// 获取服务状态（简单版：直接检查端口占用）
 #[command]
 pub async fn get_service_status() -> Result<ServiceStatus, String> {
+    let service_port = crate::commands::config::get_gateway_port();
     // 简单直接：检查端口是否被占用
-    let pid = check_port_listening(SERVICE_PORT);
+    let pid = check_port_listening(service_port);
     let running = pid.is_some();
-    
+
     Ok(ServiceStatus {
         running,
         pid,
-        port: SERVICE_PORT,
+        port: service_port,
         uptime_seconds: None,
         memory_mb: None,
         cpu_percent: None,
@@ -100,10 +99,11 @@ pub async fn start_service() -> Result<String, String> {
         .map_err(|e| format!("启动服务失败: {}", e))?;
     
     // 轮询等待端口开始监听（最多 15 秒）
-    info!("[服务] 等待端口 {} 开始监听...", SERVICE_PORT);
+    let service_port = crate::commands::config::get_gateway_port();
+    info!("[服务] 等待端口 {} 开始监听...", service_port);
     for i in 1..=15 {
         std::thread::sleep(std::time::Duration::from_secs(1));
-        if let Some(pid) = check_port_listening(SERVICE_PORT) {
+        if let Some(pid) = check_port_listening(service_port) {
             info!("[服务] ✓ 启动成功 ({}秒), PID: {}", i, pid);
             return Ok(format!("服务已启动，PID: {}", pid));
         }
@@ -188,36 +188,37 @@ fn kill_process(pid: u32, force: bool) -> bool {
 #[command]
 pub async fn stop_service() -> Result<String, String> {
     info!("[服务] 停止服务...");
-    
-    let pids = get_pids_on_port(SERVICE_PORT);
+
+    let service_port = crate::commands::config::get_gateway_port();
+    let pids = get_pids_on_port(service_port);
     if pids.is_empty() {
-        info!("[服务] 端口 {} 无进程监听，服务未运行", SERVICE_PORT);
+        info!("[服务] 端口 {} 无进程监听，服务未运行", service_port);
         return Ok("服务未在运行".to_string());
     }
-    
-    info!("[服务] 发现 {} 个进程监听端口 {}: {:?}", pids.len(), SERVICE_PORT, pids);
-    
+
+    info!("[服务] 发现 {} 个进程监听端口 {}: {:?}", pids.len(), service_port, pids);
+
     // 第一步：优雅终止 (SIGTERM)
     for &pid in &pids {
         kill_process(pid, false);
     }
     std::thread::sleep(std::time::Duration::from_secs(2));
-    
+
     // 检查是否已停止
-    let remaining = get_pids_on_port(SERVICE_PORT);
+    let remaining = get_pids_on_port(service_port);
     if remaining.is_empty() {
         info!("[服务] ✓ 已停止");
         return Ok("服务已停止".to_string());
     }
-    
+
     // 第二步：强制终止 (SIGKILL)
     info!("[服务] 仍有 {} 个进程存活，强制终止...", remaining.len());
     for &pid in &remaining {
         kill_process(pid, true);
     }
     std::thread::sleep(std::time::Duration::from_secs(1));
-    
-    let still_running = get_pids_on_port(SERVICE_PORT);
+
+    let still_running = get_pids_on_port(service_port);
     if still_running.is_empty() {
         info!("[服务] ✓ 已强制停止");
         Ok("服务已停止".to_string())
