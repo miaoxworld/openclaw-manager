@@ -281,9 +281,16 @@ fn get_windows_node_paths() -> Vec<String> {
 /// 获取 OpenClaw 版本
 fn get_openclaw_version() -> Option<String> {
     // 使用 run_openclaw 统一处理各平台
-    shell::run_openclaw(&["--version"])
-        .ok()
-        .map(|v| v.trim().to_string())
+    let output = shell::run_openclaw(&["--version"]).ok()?;
+
+    // 从完整输出中提取版本号（格式：2026.3.24）
+    // 可能的输出格式：
+    // - "OpenClaw 2026.3.24 (cff6dc9)"
+    // - "2026.3.24"
+    // - "v2026.3.24"
+    use regex::Regex;
+    let version_re = Regex::new(r"(\d{4}\.\d+\.\d+)").ok()?;
+    version_re.captures(&output).map(|caps| caps[1].to_string())
 }
 
 /// 检查 Node.js 版本是否 >= 22

@@ -34,6 +34,25 @@ fn save_openclaw_config(config: &Value) -> Result<(), String> {
     file::write_file(&config_path, &content).map_err(|e| format!("写入配置文件失败: {}", e))
 }
 
+/// 获取 Gateway 端口号
+/// 从 openclaw.json 读取 gateway.port，如果不存在则返回默认值 18789
+pub fn get_gateway_port() -> u16 {
+    match load_openclaw_config() {
+        Ok(config) => {
+            if let Some(port) = config.pointer("/gateway/port").and_then(|v| v.as_u64()) {
+                let port = port as u16;
+                info!("[Gateway 端口] 从配置文件读取端口: {}", port);
+                return port;
+            }
+        }
+        Err(e) => {
+            debug!("[Gateway 端口] 读取配置失败，使用默认端口: {}", e);
+        }
+    }
+    info!("[Gateway 端口] 使用默认端口: 18789");
+    18789
+}
+
 /// 获取完整配置
 #[command]
 pub async fn get_config() -> Result<Value, String> {
@@ -168,10 +187,11 @@ pub async fn get_or_create_gateway_token() -> Result<String, String> {
 #[command]
 pub async fn get_dashboard_url() -> Result<String, String> {
     info!("[Dashboard URL] 获取 Dashboard URL...");
-    
+
     let token = get_or_create_gateway_token().await?;
-    let url = format!("http://localhost:18789?token={}", token);
-    
+    let port = get_gateway_port();
+    let url = format!("http://localhost:{}?token={}", port, token);
+
     info!("[Dashboard URL] ✓ URL: {}...", &url[..50.min(url.len())]);
     Ok(url)
 }

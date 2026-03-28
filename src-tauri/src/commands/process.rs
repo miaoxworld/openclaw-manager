@@ -34,23 +34,21 @@ pub async fn get_openclaw_version() -> Result<Option<String>, String> {
 #[command]
 pub async fn check_port_in_use(port: u16) -> Result<bool, String> {
     info!("[进程检查] 检查端口 {} 是否被占用...", port);
-    
-    // 使用 openclaw health 检查 gateway 是否在运行
-    // 如果 port 是默认的 18789，直接使用 openclaw health
-    if port == 18789 {
-        debug!("[进程检查] 使用 openclaw health 检查端口 18789...");
+
+    let config_port = crate::commands::config::get_gateway_port();
+
+    if port == config_port {
+        debug!("[进程检查] 使用 openclaw health 检查端口 {}...", port);
         let result = shell::run_openclaw(&["health", "--timeout", "2000"]);
-        // 如果 health 命令成功，说明端口被 gateway 占用
         let in_use = result.is_ok();
-        info!("[进程检查] 端口 18789 状态: {}", if in_use { "被占用" } else { "空闲" });
+        info!("[进程检查] 端口 {} 状态: {}", port, if in_use { "被占用" } else { "空闲" });
         return Ok(in_use);
     }
-    
-    // 对于非默认端口，尝试使用 TCP 连接检查
+
     debug!("[进程检查] 使用 TCP 连接检查端口 {}...", port);
     use std::net::TcpStream;
     use std::time::Duration;
-    
+
     let addr = format!("127.0.0.1:{}", port);
     match TcpStream::connect_timeout(&addr.parse().unwrap(), Duration::from_millis(500)) {
         Ok(_) => {

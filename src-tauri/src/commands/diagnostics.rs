@@ -580,6 +580,7 @@ pub async fn start_channel_login(channel_type: String) -> Result<String, String>
             #[cfg(target_os = "macos")]
             {
                 let env_path = platform::get_env_file_path();
+                let gateway_port = crate::commands::config::get_gateway_port();
                 // 创建一个临时脚本文件
                 // 流程：1. 启用插件 2. 重启 Gateway 3. 登录
                 let script_content = format!(
@@ -640,7 +641,7 @@ echo "步骤 2/3: 重启 Gateway 使插件生效..."
 openclaw gateway stop 2>/dev/null || true
 sleep 2
 # 启动 gateway 服务
-openclaw gateway start 2>/dev/null || openclaw gateway --port 18789 &
+openclaw gateway start 2>/dev/null || openclaw gateway --port {gateway_port} &
 sleep 3
 echo "✅ Gateway 已重启"
 echo ""
@@ -754,19 +755,20 @@ pub async fn run_security_scan() -> Result<Vec<SecurityIssue>, String> {
             }
         }
         // 也通过 netstat 检查实际绑定
+        let gateway_port = crate::commands::config::get_gateway_port();
         if !exposed {
             #[cfg(target_os = "windows")]
             {
-                if let Ok(output) = shell::run_cmd_output("netstat -ano | findstr :18789") {
-                    if output.contains("0.0.0.0:18789") {
+                if let Ok(output) = shell::run_cmd_output(&format!("netstat -ano | findstr :{}", gateway_port)) {
+                    if output.contains(&format!("0.0.0.0:{}", gateway_port)) {
                         exposed = true;
                     }
                 }
             }
             #[cfg(not(target_os = "windows"))]
             {
-                if let Ok(output) = shell::run_bash_output("netstat -tlnp 2>/dev/null | grep 18789 || ss -tlnp 2>/dev/null | grep 18789") {
-                    if output.contains("0.0.0.0:18789") || output.contains(":::18789") {
+                if let Ok(output) = shell::run_bash_output(&format!("netstat -tlnp 2>/dev/null | grep {} || ss -tlnp 2>/dev/null | grep {}", gateway_port, gateway_port)) {
+                    if output.contains(&format!("0.0.0.0:{}", gateway_port)) || output.contains(&format!(":::{}", gateway_port)) {
                         exposed = true;
                     }
                 }
@@ -776,10 +778,11 @@ pub async fn run_security_scan() -> Result<Vec<SecurityIssue>, String> {
     };
 
     if port_bind_exposed {
+        let gateway_port = crate::commands::config::get_gateway_port();
         issues.push(SecurityIssue {
             id: "port_bind_all".to_string(),
             title: "服务端口绑定到所有网络接口".to_string(),
-            description: "OpenClaw Gateway 绑定在 0.0.0.0:18789，意味着所有网络接口（含公网）都可以访问该服务。".to_string(),
+            description: format!("OpenClaw Gateway 绑定在 0.0.0.0:{}，意味着所有网络接口（含公网）都可以访问该服务。", gateway_port),
             severity: "high".to_string(),
             fixable: false,
             fixed: false,
@@ -817,6 +820,7 @@ pub async fn run_security_scan() -> Result<Vec<SecurityIssue>, String> {
     }
 
     if has_public_ip {
+        let gateway_port = crate::commands::config::get_gateway_port();
         issues.push(SecurityIssue {
             id: "public_ip".to_string(),
             title: "检测到公网 IP 地址".to_string(),
@@ -825,7 +829,7 @@ pub async fn run_security_scan() -> Result<Vec<SecurityIssue>, String> {
             fixable: false,
             fixed: false,
             category: "network".to_string(),
-            detail: Some("建议使用防火墙限制 18789 端口的外部访问，或者将服务绑定到 127.0.0.1。".to_string()),
+            detail: Some(format!("建议使用防火墙限制 {} 端口的外部访问，或者将服务绑定到 127.0.0.1。", gateway_port)),
         });
     } else {
         info!("[安全扫描] IP 地址检测通过，仅有私有/本地 IP");
@@ -1037,9 +1041,10 @@ pub async fn fix_security_issues(issue_ids: Vec<String>) -> Result<SecurityFixRe
             instructions.push_str(&manual_parts.join("\n"));
             instructions.push_str("\n\n");
         }
+        let gateway_port = crate::commands::config::get_gateway_port();
         instructions.push_str("以下安全问题需要手动处理：\n");
         instructions.push_str("• 端口绑定：编辑 ~/.openclaw/openclaw.json 中的 gateway.host 设为 \"127.0.0.1\"\n");
-        instructions.push_str("• 公网 IP：配置防火墙规则，限制 18789 端口的外部访问\n");
+        instructions.push_str(&format!("• 公网 IP：配置防火墙规则，限制 {} 端口的外部访问\n", gateway_port));
         instructions.push_str("• 技能库审查：检查可疑技能的源代码和权限，卸载不需要的技能\n");
         instructions.push_str("• HTTPS：使用 Nginx 反向代理并配置 SSL 证书\n");
         instructions.push_str("• 文件权限：在设置 > 安全设置中限制 AI 的文件访问范围");
