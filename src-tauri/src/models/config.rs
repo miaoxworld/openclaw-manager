@@ -125,7 +125,7 @@ pub struct ModelCostConfig {
     #[serde(rename = "cacheRead", default)]
     pub cache_read: f64,
     #[serde(rename = "cacheWrite", default)]
-    pub cache_write: f64,
+    pub cache_write: Option<f64>,
 }
 
 /// 网关配置
@@ -435,4 +435,3 @@ pub struct AgentBinding {
     #[serde(rename = "accountId")]
     pub account_id: Option<String>,
 }
-
