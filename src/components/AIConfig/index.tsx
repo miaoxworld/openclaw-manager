@@ -47,6 +47,34 @@ interface OfficialProvider {
   docs_url: string | null;
 }
 
+interface ProviderEndpoint {
+  name: string;
+  base_url: string;
+  api_type: string;
+}
+
+const PROVIDER_ENDPOINTS: Record<string, ProviderEndpoint[]> = {
+  minimax: [
+    { name: 'Global · Anthropic compatible', base_url: 'https://api.minimax.io/anthropic', api_type: 'anthropic-messages' },
+    { name: 'Global · OpenAI compatible', base_url: 'https://api.minimax.io/v1', api_type: 'openai-completions' },
+    { name: 'China · Anthropic compatible', base_url: 'https://api.minimaxi.com/anthropic', api_type: 'anthropic-messages' },
+    { name: 'China · OpenAI compatible', base_url: 'https://api.minimaxi.com/v1', api_type: 'openai-completions' },
+  ],
+};
+
+const MODEL_PRESETS: Record<string, Pick<ModelConfig, 'input' | 'reasoning' | 'cost'>> = {
+  'MiniMax-M3': {
+    input: ['text', 'image', 'video'],
+    reasoning: true,
+    cost: { input: 0.6, output: 2.4, cache_read: 0.12, cache_write: null },
+  },
+  'MiniMax-M2.7': {
+    input: ['text'],
+    reasoning: true,
+    cost: { input: 0.3, output: 1.2, cache_read: 0.06, cache_write: 0.375 },
+  },
+};
+
 interface ConfiguredModel {
   full_id: string;
   id: string;
@@ -79,7 +107,7 @@ interface ModelConfig {
   context_window: number | null;
   max_tokens: number | null;
   reasoning: boolean | null;
-  cost: { input: number; output: number; cache_read: number; cache_write: number } | null;
+  cost: { input: number; output: number; cache_read: number; cache_write: number | null } | null;
 }
 
 interface AITestResult {
@@ -140,17 +168,22 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
   // 检查是否是官方 Provider 名字但使用了自定义地址
   const isCustomUrlWithOfficialName = (() => {
     const official = officialProviders.find(p => p.id === providerName);
-    if (official && official.default_base_url && baseUrl !== official.default_base_url) {
+    const officialUrls = official
+      ? [official.default_base_url, ...(PROVIDER_ENDPOINTS[official.id] || []).map(endpoint => endpoint.base_url)]
+          .filter(Boolean)
+      : [];
+    if (official && officialUrls.length > 0 && !officialUrls.includes(baseUrl)) {
       return true;
     }
     return false;
   })();
 
   const handleSelectOfficial = (provider: OfficialProvider) => {
+    const endpoint = PROVIDER_ENDPOINTS[provider.id]?.[0];
     setSelectedOfficial(provider);
     setProviderName(provider.id);
-    setBaseUrl(provider.default_base_url || '');
-    setApiType(provider.api_type);
+    setBaseUrl(endpoint?.base_url || provider.default_base_url || '');
+    setApiType(endpoint?.api_type || provider.api_type);
     // 预选推荐模型
     const recommended = provider.suggested_models.filter(m => m.recommended).map(m => m.id);
     setSelectedModels(recommended.length > 0 ? recommended : [provider.suggested_models[0]?.id].filter(Boolean));
@@ -221,17 +254,18 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
       // 构建模型配置
       const models: ModelConfig[] = selectedModels.map(modelId => {
         const suggested = selectedOfficial?.suggested_models.find(m => m.id === modelId);
+        const preset = MODEL_PRESETS[modelId];
         // 编辑模式下，保留原有模型的配置
         const existingModel = editingProvider?.models.find(m => m.id === modelId);
         return {
           id: modelId,
           name: suggested?.name || existingModel?.name || modelId,
           api: apiType,
-          input: ['text', 'image'],
+          input: preset?.input || ['text', 'image'],
           context_window: suggested?.context_window || existingModel?.context_window || 200000,
           max_tokens: suggested?.max_tokens || existingModel?.max_tokens || 8192,
-          reasoning: false,
-          cost: null,
+          reasoning: preset?.reasoning ?? false,
+          cost: preset?.cost || null,
         };
       });
 
@@ -372,6 +406,32 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                     </div>
                   )}
                 </div>
+
+                {selectedOfficial && (PROVIDER_ENDPOINTS[selectedOfficial.id]?.length || 0) > 0 && (
+                  <div>
+                    <label className="block text-sm text-content-secondary mb-2">Endpoint</label>
+                    <select
+                      value={`${apiType}|${baseUrl}`}
+                      onChange={e => {
+                        const endpoint = PROVIDER_ENDPOINTS[selectedOfficial.id].find(
+                          item => `${item.api_type}|${item.base_url}` === e.target.value
+                        );
+                        if (endpoint) {
+                          setBaseUrl(endpoint.base_url);
+                          setApiType(endpoint.api_type);
+                          setFormError(null);
+                        }
+                      }}
+                      className="input-base"
+                    >
+                      {PROVIDER_ENDPOINTS[selectedOfficial.id].map(endpoint => (
+                        <option key={`${endpoint.api_type}-${endpoint.base_url}`} value={`${endpoint.api_type}|${endpoint.base_url}`}>
+                          {endpoint.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {/* API 地址 */}
                 <div>
